@@ -1,0 +1,22 @@
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[workspace]
+members = [
+    "pint", "primitives",
+    "transaction",
+]
+default-members = ["pint"]
+exclude = []
+
+[workspace.lints]
+rust.unused_must_use = "deny"
+
+[workspace.dependencies]
+pint = { path = "pint" }
+transaction = { path = "transaction" }
+primitives = { path = "primitives" }
+alloy-consensus = { version = "1.0.7", default-features = false }
+ethnum = { version = "1.5.2", default-features = false }

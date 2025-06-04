@@ -1,0 +1,11 @@
+[package]
+name = "transaction"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+alloy-consensus = { workspace = true, features = ["serde"] }
+primitives.workspace = true
+
+[lints]
+workspace = true
