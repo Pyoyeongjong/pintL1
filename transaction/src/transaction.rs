@@ -1,6 +1,12 @@
-use core::{fmt, mem};
-use primitives::{Address, ChainId, TxHash, U256};
-use std::{io::Chain, sync::OnceLock};
+use std::sync::OnceLock;
+use primitives::types::{Signed, TxHash};
+
+use primitives::{
+    types::{ChainId, U256, Signature},
+    transaction::{SignableTransaction, Encodable},
+};
+
+use crate::PintTx;
 
 // 매크로 정의는 반드시 매크로 호출보다 먼저 위치해야 한다.
 /*
@@ -22,7 +28,7 @@ macro_rules! delegate {
 pub enum Transaction {
     Pint(PintTx),
 }
-
+ 
 impl primitives::Transaction for Transaction {
     fn chain_id(&self) -> ChainId {
         delegate!(self => tx.chain_id())
@@ -35,34 +41,47 @@ impl primitives::Transaction for Transaction {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct PintTx {
-    pub chain_id: ChainId,
-    pub nonce: u64,
-    pub to: Address,
-    pub value: U256,
-}
 
-impl primitives::Transaction for PintTx {
-    fn chain_id(&self) -> ChainId {
-        self.chain_id
-    }
-    fn nonce(&self) -> u64 {
-        self.nonce
-    }
-    fn value(&self) -> U256 {
-        self.value
+// 이건 구체 타입 impl
+// impl<T> trait<T> 이게 제너릭 impl
+impl SignableTransaction<Signature> for Transaction {
+    fn into_signed(self, signature: Signature) -> Signed<Self>{
+        let tx_hash = delegate!(self.clone() => tx.tx_hash(&signature));
+        Signed::new(self, signature, tx_hash)
     }
 }
 
-pub struct Signature {
-    y_parity: bool,
-    r: U256,
-    s: U256,
+pub trait IntoTransaction {
+    fn into_transaction(self) -> Transaction;
 }
 
-pub struct TransactionSigned {
-    hash: OnceLock<TxHash>,
-    signature: Signature,
-    transaction: Transaction,
+impl Transaction {
+    pub fn from<T: IntoTransaction>(tx: T) -> Self {
+        tx.into_transaction()
+    }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use primitives::types::Address;
+
+    use super::*;
+
+    #[test]
+    fn test_into_signed() {
+        let ptx = PintTx {
+            chain_id: 0,
+            nonce: 0,
+            to: Address::new("deadbeef".to_string()),
+            value: U256::new(1)
+        };
+
+        let tx: Transaction = Transaction::from::<PintTx>(ptx);
+        let signature = Signature::from_str("48b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353efffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c8041b").unwrap();
+        let signed_tx = tx.into_signed(signature);
+    }
+}
+

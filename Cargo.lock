@@ -675,6 +675,7 @@ name = "primitives"
 version = "0.1.0"
 dependencies = [
  "ethnum",
+ "hex",
 ]
 
 [[package]]
@@ -1013,7 +1014,9 @@ name = "transaction"
 version = "0.1.0"
 dependencies = [
  "alloy-consensus",
+ "hex",
  "primitives",
+ "sha2",
 ]
 
 [[package]]

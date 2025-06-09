@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 ethnum = { workspace = true }
+hex = "0.4.3"
 
 [lints]
 workspace = true

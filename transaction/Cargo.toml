@@ -5,7 +5,9 @@ edition = "2024"
 
 [dependencies]
 alloy-consensus = { workspace = true, features = ["serde"] }
+hex = "0.4.3"
 primitives.workspace = true
+sha2 = "0.10.9"
 
 [lints]
 workspace = true
