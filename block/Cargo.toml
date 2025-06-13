@@ -1,11 +1,13 @@
 [package]
-name = "pint"
+name = "block"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[dependencies]
+hex = "0.4.3"
+primitives.workspace = true
+sha2 = "0.10.9"
+
 [lints]
 workspace = true
-
-[dependencies]
-alloy-primitives = "1.2.0"

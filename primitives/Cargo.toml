@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-ethnum = { workspace = true }
+alloy-primitives = "1.2.0"
 hex = "0.4.3"
 
 [lints]

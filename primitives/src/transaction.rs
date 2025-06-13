@@ -1,5 +1,5 @@
 use core::fmt;
-use crate::types::{Signed, ChainId, U256, TxHash};
+use crate::types::{TransactionSigned, ChainId, U256, TxHash};
 
 pub trait Transaction: fmt::Debug + Send + Sync + 'static {
     fn chain_id(&self) -> ChainId;
@@ -10,7 +10,7 @@ pub trait Transaction: fmt::Debug + Send + Sync + 'static {
 // A signable transaction/
 pub trait SignableTransaction<Signature>: Transaction {
     // Convert to a ['Signed'] Object
-    fn into_signed(self, signature: Signature) -> Signed<Self, Signature> where Self: Sized;
+    fn into_signed(self, signature: Signature) -> TransactionSigned<Self, Signature> where Self: Sized;
 }
 
 pub trait Encodable<Signature>: Transaction {

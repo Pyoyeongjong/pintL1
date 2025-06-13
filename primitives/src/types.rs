@@ -1,9 +1,10 @@
 use std::{str::FromStr, sync::OnceLock};
 use hex;
-pub use ethnum::U256;
+pub use alloy_primitives::{B256, U256};
 
 use crate::{utils::normalize_v, SignatureError};
-pub type TxHash = String;
+pub type TxHash = B256;
+pub type BlockHash = B256;
 pub type ChainId = u64;
 
 // TODO: Address String Should have 20 length bytes!
@@ -63,24 +64,25 @@ impl Signature {
 
     pub fn as_bytes(&self) -> [u8; 65] {
         let mut sig = [0u8; 65];
-        sig[..32].copy_from_slice(&self.r.to_be_bytes());
-        sig[32..64].copy_from_slice(&self.s.to_be_bytes());
+        sig[..32].copy_from_slice(&self.r.to_be_bytes::<32>());
+        sig[32..64].copy_from_slice(&self.s.to_be_bytes::<32>());
         sig[64] = self.y_parity as u8;
         sig
     }
 }
 
+#[derive(Debug)]
 // Sig을 생략하면 기본으로 Signature를 사용한다는 뜻
-pub struct Signed<T, Sig = Signature> {
+pub struct TransactionSigned<T, Sig = Signature> {
     tx: T,
     signature: Sig,
     hash: OnceLock<String>,
 }
 
-impl<T, Sig> Signed<T, Sig> {
-    pub fn new(tx: T, signature: Sig, hash: String) -> Self {
+impl<T, Sig> TransactionSigned<T, Sig> {
+    pub fn new(tx: T, signature: Sig, hash: TxHash) -> Self {
         let value = OnceLock::new();
-        value.get_or_init(|| hash.into());
+        value.get_or_init(|| hash.to_string());
         Self { tx, signature, hash: value }
     }
 }

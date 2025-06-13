@@ -6,7 +6,7 @@ license = "MIT"
 [workspace]
 members = [
     "pint", "primitives",
-    "transaction",
+    "transaction", "block",
 ]
 default-members = ["pint"]
 exclude = []
@@ -18,5 +18,5 @@ rust.unused_must_use = "deny"
 pint = { path = "pint" }
 transaction = { path = "transaction" }
 primitives = { path = "primitives" }
+block = { path = "block" }
 alloy-consensus = { version = "1.0.7", default-features = false }
-ethnum = { version = "1.5.2", default-features = false }

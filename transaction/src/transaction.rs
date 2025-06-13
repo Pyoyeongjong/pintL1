@@ -1,5 +1,5 @@
 use std::sync::OnceLock;
-use primitives::types::{Signed, TxHash};
+use primitives::types::{TransactionSigned, TxHash};
 
 use primitives::{
     types::{ChainId, U256, Signature},
@@ -45,9 +45,9 @@ impl primitives::Transaction for Transaction {
 // 이건 구체 타입 impl
 // impl<T> trait<T> 이게 제너릭 impl
 impl SignableTransaction<Signature> for Transaction {
-    fn into_signed(self, signature: Signature) -> Signed<Self>{
+    fn into_signed(self, signature: Signature) -> TransactionSigned<Self>{
         let tx_hash = delegate!(self.clone() => tx.tx_hash(&signature));
-        Signed::new(self, signature, tx_hash)
+        TransactionSigned::new(self, signature, tx_hash)
     }
 }
 
@@ -76,12 +76,14 @@ mod tests {
             chain_id: 0,
             nonce: 0,
             to: Address::new("deadbeef".to_string()),
-            value: U256::new(1)
+            value: U256::from(1)
         };
 
         let tx: Transaction = Transaction::from::<PintTx>(ptx);
         let signature = Signature::from_str("48b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353efffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c8041b").unwrap();
         let signed_tx = tx.into_signed(signature);
+
+        println!("{:?}", signed_tx);
     }
 }
 
