@@ -5,6 +5,8 @@ pub trait Transaction: fmt::Debug + Send + Sync + 'static {
     fn chain_id(&self) -> ChainId;
     fn nonce(&self) -> u64;
     fn value(&self) -> U256;
+
+    fn get_priority(&self) -> Option<u128>;
 }
 
 // A signable transaction/

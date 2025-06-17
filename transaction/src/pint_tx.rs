@@ -10,6 +10,7 @@ pub struct PintTx {
     pub chain_id: ChainId,
     pub nonce: u64,
     pub to: Address,
+    pub fee: u128,
     pub value: U256,
 }
 
@@ -22,6 +23,10 @@ impl primitives::Transaction for PintTx {
     }
     fn value(&self) -> U256 {
         self.value
+    }
+
+    fn get_priority(&self) -> Option<u128> {
+        Some(self.fee)
     }
 }
 
@@ -54,6 +59,7 @@ mod tests {
         let ptx = PintTx {
             chain_id: 0,
             nonce: 0,
+            fee: 0, 
             to: Address::new("deadbeef".to_string()),
             value: U256::from(1)
         };

@@ -1,6 +1,7 @@
 use std::{str::FromStr, sync::OnceLock};
 use hex;
 pub use alloy_primitives::{B256, U256};
+use rand::{distr::Alphanumeric, rng, Rng};
 
 use crate::{utils::normalize_v, SignatureError};
 pub type TxHash = B256;
@@ -8,8 +9,10 @@ pub type BlockHash = B256;
 pub type ChainId = u64;
 
 // TODO: Address String Should have 20 length bytes!
-#[derive(Debug, Clone)]
+// TODO: Address can't get copy trait because it is String type
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct Address(String);
+const ADDR_LEN: usize = 20;
 
 impl Address {
 
@@ -20,7 +23,15 @@ impl Address {
     pub fn get_addr(&self) -> String {
         self.0.clone()
     }
+
+    pub fn random() -> Self {
+        let len = ADDR_LEN;
+        // Impl FromIterator<char> for String is important!
+        Self(rng().sample_iter(&Alphanumeric).take(len).map(char::from).collect())
+    }
+
 }
+
 
 #[derive(Debug, Clone)]
 pub struct Signature {

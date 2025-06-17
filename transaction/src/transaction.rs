@@ -39,6 +39,10 @@ impl primitives::Transaction for Transaction {
     fn value(&self) -> U256 {
         delegate!(self => tx.value())
     }
+
+    fn get_priority(&self) -> Option<u128> {
+        delegate!(self => tx.get_priority())
+    }
 }
 
 
@@ -75,6 +79,7 @@ mod tests {
         let ptx = PintTx {
             chain_id: 0,
             nonce: 0,
+            fee: 0,
             to: Address::new("deadbeef".to_string()),
             value: U256::from(1)
         };

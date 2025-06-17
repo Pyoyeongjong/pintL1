@@ -6,7 +6,7 @@ license = "MIT"
 [workspace]
 members = [
     "pint", "primitives",
-    "transaction", "block",
+    "transaction", "block", "transaction_pool"
 ]
 default-members = ["pint"]
 exclude = []
@@ -19,4 +19,6 @@ pint = { path = "pint" }
 transaction = { path = "transaction" }
 primitives = { path = "primitives" }
 block = { path = "block" }
+transaction_pool = { path = "transaction_pool" }
 alloy-consensus = { version = "1.0.7", default-features = false }
+tokio = { version = "1.0.7", features = ["full"] }

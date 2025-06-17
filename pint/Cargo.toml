@@ -9,3 +9,4 @@ workspace = true
 
 [dependencies]
 alloy-primitives = "1.2.0"
+rand = "0.9.1"

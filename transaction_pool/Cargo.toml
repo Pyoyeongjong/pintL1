@@ -5,6 +5,10 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+paste = "1.0.15"
+primitives.workspace = true
+rand = "0.9.1"
+tokio.workspace = true
 
 [lints]
 workspace = true
