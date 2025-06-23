@@ -1,19 +1,20 @@
-use std::{fmt::Debug};
 use core::default::Default;
+use std::fmt::Debug;
 
-use primitives::{types::{Address, TxHash, U256}, Transaction};
+use primitives::{
+    Transaction,
+    types::{Address, TxHash, U256},
+};
 
 #[derive(Debug, Default, Clone)]
 pub enum TransactionOrigin {
     #[default]
     Local,
     External,
-    Private
+    Private,
 }
 
-pub trait PoolTransaction: 
-    Debug + Transaction
-{
+pub trait PoolTransaction: Debug + Transaction {
     fn hash(&self) -> TxHash;
     fn sender(&self) -> Address;
     fn cost(&self) -> U256;

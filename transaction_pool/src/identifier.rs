@@ -2,14 +2,13 @@ use std::collections::HashMap;
 
 use primitives::types::Address;
 
-
 // Internal mapping of addresses
 // This assigns a unique [`SenderId`] for a new [`Address`].
 #[derive(Debug, Default)]
 pub struct SenderIdentifiers {
     id: u64,
     address_to_id: HashMap<Address, SenderId>,
-    sender_to_address: HashMap<SenderId, Address>
+    sender_to_address: HashMap<SenderId, Address>,
 }
 
 impl SenderIdentifiers {
@@ -40,14 +39,12 @@ impl SenderIdentifiers {
 #[derive(Debug, Clone, Ord, PartialEq, Eq, PartialOrd, Copy)]
 pub struct TransactionId {
     pub sender: SenderId,
-    pub nonce: u64
+    pub nonce: u64,
 }
 
 impl TransactionId {
     pub fn new(sender: SenderId, nonce: u64) -> Self {
-        Self {
-            sender, nonce
-        }
+        Self { sender, nonce }
     }
 }
 

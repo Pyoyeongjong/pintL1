@@ -1,8 +1,8 @@
-mod traits;
-mod pool;
 mod config;
-mod identifier;
-mod validate;
-mod test_utils;
-mod ordering;
 mod error;
+mod identifier;
+mod ordering;
+mod pool;
+mod test_utils;
+mod traits;
+mod validate;

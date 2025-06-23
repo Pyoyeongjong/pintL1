@@ -1,6 +1,9 @@
 use primitives::types::TxHash;
 
-use crate::{identifier::{SenderId, TransactionId}, traits::{PoolTransaction, TransactionOrigin}};
+use crate::{
+    identifier::{SenderId, TransactionId},
+    traits::{PoolTransaction, TransactionOrigin},
+};
 
 // A valid transaction in the pool.
 #[derive(Debug, Clone)]
@@ -8,7 +11,7 @@ pub struct ValidPoolTransaction<T: PoolTransaction> {
     pub transaction: T,
     pub transaction_id: TransactionId,
     pub origin: TransactionOrigin,
-    pub timestamp: std::time::Instant
+    pub timestamp: std::time::Instant,
 }
 
 impl<T: PoolTransaction> ValidPoolTransaction<T> {

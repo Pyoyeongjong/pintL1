@@ -6,9 +6,10 @@ use crate::{traits::PoolTransaction, validate::ValidPoolTransaction};
 
 pub type PoolResult<T> = Result<T, PoolError>;
 
+#[derive(Debug)]
 pub struct PoolError {
     pub hash: TxHash,
-    pub kind: PoolErrorKind
+    pub kind: PoolErrorKind,
 }
 
 impl PoolError {
@@ -17,6 +18,7 @@ impl PoolError {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum PoolErrorKind {
     AlreadyImported,
     InvalidTransaction,
@@ -26,5 +28,8 @@ pub enum PoolErrorKind {
 pub enum InsertErr<T: PoolTransaction> {
     Underpriced {
         transaction: Arc<ValidPoolTransaction<T>>,
-    }
+    },
+    InvalidTransaction {
+        transaction: Arc<ValidPoolTransaction<T>>,
+    },
 }

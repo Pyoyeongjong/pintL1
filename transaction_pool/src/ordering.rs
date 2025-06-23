@@ -1,5 +1,5 @@
-use std::marker::PhantomData;
 use std::fmt::Debug;
+use std::marker::PhantomData;
 
 use primitives::types::U256;
 
@@ -11,9 +11,7 @@ pub enum Priority<T> {
     None,
 }
 
-
 impl<T> From<Option<T>> for Priority<T> {
-    
     fn from(value: Option<T>) -> Self {
         // if some -> f(x)
         // if none -> default
@@ -25,10 +23,7 @@ pub trait TransactionOrdering: Debug + Send {
     type Transaction: PoolTransaction;
     type PriorityValue: Clone + Debug;
 
-    fn priority(
-        &self,
-        transaction: &Self::Transaction,
-    ) -> Priority<Self::PriorityValue>;
+    fn priority(&self, transaction: &Self::Transaction) -> Priority<Self::PriorityValue>;
 }
 
 #[derive(Debug)]
@@ -40,17 +35,14 @@ impl<T> Default for PintOrdering<T> {
     }
 }
 
-impl<T> TransactionOrdering for PintOrdering<T> 
+impl<T> TransactionOrdering for PintOrdering<T>
 where
-    T: PoolTransaction + Send
+    T: PoolTransaction + Send,
 {
     type PriorityValue = U256;
     type Transaction = T;
 
-    fn priority(
-            &self,
-            transaction: &Self::Transaction,
-        ) -> Priority<Self::PriorityValue> {
+    fn priority(&self, transaction: &Self::Transaction) -> Priority<Self::PriorityValue> {
         transaction.get_priority().map(U256::from).into()
     }
 }

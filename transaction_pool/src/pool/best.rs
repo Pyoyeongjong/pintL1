@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 
 use tokio::sync::broadcast;
 
-use crate::{pool::txpool::PendingTransaction, ordering::TransactionOrdering};
 use crate::identifier::TransactionId;
+use crate::{ordering::TransactionOrdering, pool::txpool::PendingTransaction};
 
 #[derive(Debug)]
 pub struct BestTransactions<T: TransactionOrdering> {

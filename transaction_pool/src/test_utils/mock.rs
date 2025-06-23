@@ -1,22 +1,27 @@
 use std::{ops::Add, time::Instant};
 
-use primitives::{types::{Address, ChainId, TxHash, B256, U256}};
+use crate::{
+    identifier::{SenderIdentifiers, TransactionId},
+    ordering::PintOrdering,
+    traits::{PoolTransaction, TransactionOrigin},
+    validate::ValidPoolTransaction,
+};
 use paste::paste;
-use crate::{identifier::{SenderIdentifiers, TransactionId}, ordering::PintOrdering, traits::{PoolTransaction, TransactionOrigin}, validate::ValidPoolTransaction};
+use primitives::types::{Address, B256, ChainId, TxHash, U256};
 use rand::{distr::Uniform, prelude::Distribution};
 
 pub type MockValidTx = ValidPoolTransaction<MockTransaction>;
 
 /*
-    Rust 2024 edition에선 &mut $field나 ref mut $field가 매크로 변수로는 사용 불가해.
- */
+   Rust 2024 edition에선 &mut $field나 ref mut $field가 매크로 변수로는 사용 불가해.
+*/
 macro_rules! set_value {
     ($this:ident => $field:ident) => {
         let value = $field;
         match $this {
-            MockTransaction::Pint {$field, ..} => {
+            MockTransaction::Pint { $field, .. } => {
                 *$field = value;
-            },
+            }
         }
     };
 }
@@ -25,7 +30,7 @@ macro_rules! set_value {
 macro_rules! get_value {
     ($this:tt => $field:ident) => {
         match $this {
-            MockTransaction::Pint {$field, ..} => $field.clone(),
+            MockTransaction::Pint { $field, .. } => $field.clone(),
         }
     };
 }
@@ -42,30 +47,35 @@ macro_rules! make_setters_getters {
             pub fn [<get_ $name>](&self) -> $t {
                 get_value!(self => $name)
             }
+
         )*}
     }
 }
 
-
 // Transaction Factory that Mocking validate Tx
 #[derive(Debug, Default)]
 pub struct MockTransactionFactory {
-    pub(crate) ids: SenderIdentifiers
+    pub(crate) ids: SenderIdentifiers,
 }
 
 impl MockTransactionFactory {
-
     pub fn tx_id(&mut self, tx: &MockTransaction) -> TransactionId {
         let sender = self.ids.sender_id_or_create(tx.sender());
         TransactionId::new(sender, tx.get_nonce())
-
     }
 
+    // This mocks validation of the transaction.
+    // This validation functhion check transaction formats only.
+    // Not validate on_chain_balance / on_chain_nonce
     pub fn validate(&mut self, transaction: MockTransaction) -> MockValidTx {
         self.validated_with_origin(TransactionOrigin::External, transaction)
     }
 
-    pub fn validated_with_origin(&mut self, origin: TransactionOrigin, transaction: MockTransaction) -> MockValidTx {
+    pub fn validated_with_origin(
+        &mut self,
+        origin: TransactionOrigin,
+        transaction: MockTransaction,
+    ) -> MockValidTx {
         MockValidTx {
             transaction: transaction.clone(),
             transaction_id: self.tx_id(&transaction),
@@ -85,7 +95,7 @@ pub enum MockTransaction {
         fee: u128,
         nonce: u64,
         to: Address,
-        value: U256
+        value: U256,
     },
 }
 
@@ -102,12 +112,26 @@ impl MockTransaction {
 
     //#[cfg(feature = "rand") should set to use B256::random!]
     pub fn pint_tx() -> Self {
-        Self::Pint { chain_id: 1, hash: B256::random(), fee: 0, nonce: 0, sender: Address::random(), to: Address::random(), value: Default::default() }
+        Self::Pint {
+            chain_id: 1,
+            hash: B256::random(),
+            fee: 0,
+            nonce: 0,
+            sender: Address::random(),
+            to: Address::random(),
+            value: Default::default(),
+        }
+    }
+
+    pub fn next(&self) -> Self {
+        let mut next = self.clone();
+        next.set_hash(B256::random());
+        next.set_nonce(self.get_nonce() + 1);
+        next
     }
 }
 
 impl primitives::Transaction for MockTransaction {
-
     fn chain_id(&self) -> ChainId {
         self.get_chain_id()
     }
