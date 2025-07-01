@@ -1,181 +1,24 @@
-use core::cmp::Ord;
+//! Implements [TxPool]
 use primitives::types::{TxHash, U256};
-use primitives::{Transaction, transaction};
 use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, HashMap};
-use std::hash::Hash;
-use std::ops::Sub;
-use std::sync::{Arc, RwLock};
+
+use std::sync::Arc;
 use tracing::trace;
 
 use crate::error::{InsertErr, PoolError, PoolErrorKind, PoolResult};
-use crate::identifier::{SenderId, TransactionId};
+use crate::identifier::{SenderId, SenderInfo, TransactionId};
 use crate::pool::parked::ParkedPool;
 use crate::pool::pending::PendingPool;
 use crate::pool::state::{SubPool, TxState};
 use crate::pool::{AddedPendingTransaction, AddedTransaction};
 use crate::validate::ValidPoolTransaction;
-use crate::{
-    config::PoolConfig,
-    ordering::{Priority, TransactionOrdering},
-    traits::PoolTransaction,
-};
-use tokio::sync::broadcast;
+use crate::{config::PoolConfig, ordering::TransactionOrdering, traits::PoolTransaction};
 
-pub struct TransactionPool<T>
-where
-    T: TransactionOrdering,
-{
-    pool: RwLock<TxPool<T>>,
-}
-
-pub struct InsertOk<T: PoolTransaction> {
-    transaction: Arc<ValidPoolTransaction<T>>,
-    replaced_tx: Option<(Arc<ValidPoolTransaction<T>>, SubPool)>,
-    sub_pool: SubPool,
-}
-
-// 아니 트랜잭션이면 트랜잭션이지 왜 굳이 ValidPoolTransaction, PoolInternalTransaction 나누냐?
-// ValidPoolTransaction<T>: 검증된 트랜잭션
-// PoolInternalTransaction: 검증된 트랜잭션에 additional info를 붙임
-pub(crate) struct AllTransactions<T: PoolTransaction> {
-    by_hash: HashMap<TxHash, Arc<ValidPoolTransaction<T>>>,
-    txs: BTreeMap<TransactionId, PoolInternalTransaction<T>>,
-}
-
-impl<T: PoolTransaction> AllTransactions<T> {
-    fn new(config: &PoolConfig) -> Self {
-        Self {
-            ..Default::default()
-        }
-    }
-
-    pub fn contains(&self, hash: &TxHash) -> bool {
-        self.by_hash.contains_key(hash)
-    }
-
-    pub fn remove_transaction_by_hash(
-        &mut self,
-        hash: &TxHash,
-    ) -> Option<(Arc<ValidPoolTransaction<T>>, SubPool)> {
-        let tx = self.by_hash.remove(hash)?;
-        let internal = self.txs.remove(&tx.transaction_id)?;
-
-        Some((tx, internal.subpool))
-    }
-
-    pub fn remove_transaction(
-        &mut self,
-        id: &TransactionId,
-    ) -> Option<(Arc<ValidPoolTransaction<T>>, SubPool)> {
-        let internal = self.txs.remove(id)?;
-        let hash = internal.transaction.hash();
-        let tx = self.by_hash.remove(&hash)?;
-
-        Some((tx, internal.subpool))
-    }
-
-    pub fn insert_tx(
-        &mut self,
-        transaction: ValidPoolTransaction<T>,
-        on_chain_balance: U256,
-        on_chain_nonce: u64,
-    ) -> Result<InsertOk<T>, InsertErr<T>> {
-        // invariant check: after several varifies we use this function.
-        assert!(
-            on_chain_nonce <= transaction.nonce(),
-            "Invalid transaction."
-        );
-
-        let mut state: TxState = Default::default();
-        let tx = Arc::new(transaction);
-        let mut replaced_tx = None;
-
-        if tx.transaction.cost() > U256::from(0) {
-            state.has_fee();
-        } else {
-            state.has_no_fee();
-            return Err(InsertErr::InvalidTransaction { transaction: tx });
-        }
-
-        if tx.transaction.nonce() > on_chain_nonce {
-            state.has_ancestor();
-        } else {
-            state.has_no_ancestor();
-        }
-
-        let pool_tx = PoolInternalTransaction {
-            transaction: Arc::clone(&tx),
-            subpool: state.into(),
-            state,
-        };
-
-        match self.txs.entry(*pool_tx.transaction.id()) {
-            // Newly inserted transactionId
-            Entry::Vacant(entry) => {
-                self.by_hash
-                    .insert(pool_tx.transaction.hash(), Arc::clone(&tx));
-                entry.insert(pool_tx);
-            }
-            // Already inserted transactionId
-            // 1. compare price of both transactions
-            // 2. if new tx wins, replace it.
-            Entry::Occupied(mut entry) => {
-                let old_tx: &ValidPoolTransaction<T> = entry.get().transaction.as_ref();
-                let new_tx = tx.as_ref();
-
-                if old_tx.is_underpriced(new_tx) {
-                    return Err(InsertErr::Underpriced { transaction: tx });
-                }
-
-                let new_hash = new_tx.transaction.hash();
-                let new_tx = pool_tx.transaction.clone();
-                let replaced = entry.insert(pool_tx);
-                self.by_hash.remove(&replaced.transaction.hash());
-                self.by_hash.insert(new_hash, new_tx);
-
-                replaced_tx = Some((replaced.transaction, replaced.subpool))
-            }
-        }
-
-        Ok(InsertOk {
-            transaction: tx,
-            replaced_tx,
-            sub_pool: state.into(),
-        })
-    }
-}
-
-impl<T: PoolTransaction> Default for AllTransactions<T> {
-    fn default() -> Self {
-        Self {
-            by_hash: Default::default(),
-            txs: Default::default(),
-        }
-    }
-}
-
-pub struct PoolInternalTransaction<T: PoolTransaction> {
-    transaction: Arc<ValidPoolTransaction<T>>,
-    state: TxState,
-    subpool: SubPool,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct SenderInfo {
-    pub(crate) state_nonce: u64,
-    pub(crate) balance: U256,
-}
-
-impl SenderInfo {
-    pub fn update(&mut self, state_nonce: u64, balance: U256) {
-        self.state_nonce = state_nonce;
-        self.balance = balance;
-    }
-}
-
+/// TxPool: It has all mempool transactions!
 pub struct TxPool<T: TransactionOrdering> {
     sender_info: HashMap<SenderId, SenderInfo>,
+    // all_transactions = pending_pool + parked_pool!
     all_transactions: AllTransactions<T::Transaction>,
     pending_pool: PendingPool<T>,
     // queue subpool = sender's lack balance or nonce gap.
@@ -346,23 +189,143 @@ impl<T: TransactionOrdering> TxPool<T> {
     }
 }
 
-// A transaction that is ready to be incloded in a block.
-// pub(crate): is public inside this crate ( can't use this outside! )
-#[derive(Debug)]
-pub(crate) struct PendingTransaction<T: TransactionOrdering> {
-    pub(crate) submission_id: u64,
-    pub(crate) transaction: Arc<ValidPoolTransaction<T::Transaction>>,
-    pub(crate) priority: Priority<T::PriorityValue>,
+// I mean, a transaction is a transaction—so why bother splitting it into ValidPoolTransaction and PoolInternalTransaction?
+// ValidPoolTransaction<T>: a verified transaction
+// PoolInternalTransaction: a verified transaction with additional metadata
+pub(crate) struct AllTransactions<T: PoolTransaction> {
+    by_hash: HashMap<TxHash, Arc<ValidPoolTransaction<T>>>,
+    txs: BTreeMap<TransactionId, PoolInternalTransaction<T>>,
 }
 
-impl<T: TransactionOrdering> Clone for PendingTransaction<T> {
-    fn clone(&self) -> Self {
+impl<T: PoolTransaction> AllTransactions<T> {
+    fn new(config: &PoolConfig) -> Self {
         Self {
-            submission_id: self.submission_id,
-            transaction: Arc::clone(&self.transaction),
-            priority: self.priority.clone(),
+            ..Default::default()
         }
     }
+
+    pub fn contains(&self, hash: &TxHash) -> bool {
+        self.by_hash.contains_key(hash)
+    }
+
+    pub fn remove_transaction_by_hash(
+        &mut self,
+        hash: &TxHash,
+    ) -> Option<(Arc<ValidPoolTransaction<T>>, SubPool)> {
+        let tx = self.by_hash.remove(hash)?;
+        let internal = self.txs.remove(&tx.transaction_id)?;
+
+        Some((tx, internal.subpool))
+    }
+
+    pub fn remove_transaction(
+        &mut self,
+        id: &TransactionId,
+    ) -> Option<(Arc<ValidPoolTransaction<T>>, SubPool)> {
+        let internal = self.txs.remove(id)?;
+        let hash = internal.transaction.hash();
+        let tx = self.by_hash.remove(&hash)?;
+
+        Some((tx, internal.subpool))
+    }
+
+    pub fn insert_tx(
+        &mut self,
+        transaction: ValidPoolTransaction<T>,
+        on_chain_balance: U256,
+        on_chain_nonce: u64,
+    ) -> Result<InsertOk<T>, InsertErr<T>> {
+        // invariant check: after several varifies we use this function.
+        assert!(
+            on_chain_nonce <= transaction.nonce(),
+            "Invalid transaction."
+        );
+
+        assert!(
+            U256::from(0) == transaction.transaction.cost(),
+            "Invalid transaction."
+        );
+
+        let mut state: TxState = Default::default();
+        let tx = Arc::new(transaction);
+        let mut replaced_tx = None;
+
+        if tx.transaction.cost() > U256::from(0) {
+            state.has_fee();
+        } else {
+            state.has_no_fee();
+            return Err(InsertErr::InvalidTransaction { transaction: tx });
+        }
+
+        if tx.transaction.nonce() > on_chain_nonce {
+            state.has_ancestor();
+        } else {
+            state.has_no_ancestor();
+        }
+
+        let pool_tx = PoolInternalTransaction {
+            transaction: Arc::clone(&tx),
+            subpool: state.into(),
+            state,
+        };
+
+        match self.txs.entry(*pool_tx.transaction.id()) {
+            // Newly inserted transactionId
+            Entry::Vacant(entry) => {
+                self.by_hash
+                    .insert(pool_tx.transaction.hash(), Arc::clone(&tx));
+                entry.insert(pool_tx);
+            }
+            // Already inserted transactionId
+            // 1. compare price of both transactions
+            // 2. if new tx wins, replace it.
+            Entry::Occupied(mut entry) => {
+                let old_tx: &ValidPoolTransaction<T> = entry.get().transaction.as_ref();
+                let new_tx = tx.as_ref();
+
+                if old_tx.is_underpriced(new_tx) {
+                    return Err(InsertErr::Underpriced { transaction: tx });
+                }
+
+                let new_hash = new_tx.transaction.hash();
+                let new_tx = pool_tx.transaction.clone();
+                let replaced = entry.insert(pool_tx);
+                self.by_hash.remove(&replaced.transaction.hash());
+                self.by_hash.insert(new_hash, new_tx);
+
+                replaced_tx = Some((replaced.transaction, replaced.subpool))
+            }
+        }
+
+        Ok(InsertOk {
+            transaction: tx,
+            replaced_tx,
+            sub_pool: state.into(),
+        })
+    }
+}
+
+impl<T: PoolTransaction> Default for AllTransactions<T> {
+    fn default() -> Self {
+        Self {
+            by_hash: Default::default(),
+            txs: Default::default(),
+        }
+    }
+}
+
+/// PoolInternalTransaction: a verified transaction with additional metadata
+pub struct PoolInternalTransaction<T: PoolTransaction> {
+    transaction: Arc<ValidPoolTransaction<T>>,
+    state: TxState,
+    subpool: SubPool,
+}
+
+/// Struct that notifies a transaction was inserted, along with additional info
+pub struct InsertOk<T: PoolTransaction> {
+    transaction: Arc<ValidPoolTransaction<T>>,
+    replaced_tx: Option<(Arc<ValidPoolTransaction<T>>, SubPool)>,
+    sub_pool: SubPool,
 }
 
 #[cfg(test)]
@@ -410,7 +373,7 @@ mod tests {
     }
 
     #[test]
-    fn test_insert_parked_pool() {
+    fn test_insert_parked_pool_nonce() {
         let mut factory = MockTransactionFactory::default();
         let mut pool = TxPool::new(MockOrdering::default(), Default::default());
 
@@ -418,6 +381,26 @@ mod tests {
         tx.set_fee(10);
         tx.set_value(U256::from(10));
         tx.set_nonce(1);
+
+        let vtx = factory.validate(tx);
+        let on_chain_balance = U256::from(10);
+        let on_chain_nonce = 0;
+
+        let _res = pool.add_transaction(vtx.clone(), on_chain_balance, on_chain_nonce);
+
+        assert_eq!(0, pool.pending_pool.len());
+        assert_eq!(1, pool.parked_pool.len());
+    }
+
+    #[test]
+    fn test_insert_parked_pool_balance() {
+        let mut factory = MockTransactionFactory::default();
+        let mut pool = TxPool::new(MockOrdering::default(), Default::default());
+
+        let mut tx = MockTransaction::pint_tx();
+        tx.set_fee(10);
+        tx.set_value(U256::from(10));
+        tx.set_nonce(0);
 
         let vtx = factory.validate(tx);
         let on_chain_balance = U256::from(10);
@@ -448,6 +431,7 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "Invalid transaction")]
     fn test_insert_invalid_fee() {
         let mut factory = MockTransactionFactory::default();
         let mut pool = TxPool::new(MockOrdering::default(), Default::default());
@@ -462,7 +446,6 @@ mod tests {
         let on_chain_nonce = 0;
 
         let _res = pool.add_transaction(vtx.clone(), on_chain_balance, on_chain_nonce);
-        assert_eq!(_res.unwrap_err().kind, PoolErrorKind::InvalidTransaction);
     }
 
     #[test]

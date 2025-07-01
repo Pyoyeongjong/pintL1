@@ -1,6 +1,8 @@
+//! Identifiers (Sender, Transaction Id, ...) for Transaction Pool
 use std::collections::HashMap;
 
 use primitives::types::Address;
+use transaction::U256;
 
 // Internal mapping of addresses
 // This assigns a unique [`SenderId`] for a new [`Address`].
@@ -54,5 +56,18 @@ pub struct SenderId(u64);
 impl From<u64> for SenderId {
     fn from(value: u64) -> Self {
         Self(value)
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct SenderInfo {
+    pub(crate) state_nonce: u64,
+    pub(crate) balance: U256,
+}
+
+impl SenderInfo {
+    pub fn update(&mut self, state_nonce: u64, balance: U256) {
+        self.state_nonce = state_nonce;
+        self.balance = balance;
     }
 }

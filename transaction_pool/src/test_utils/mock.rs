@@ -1,4 +1,5 @@
-use std::{ops::Add, time::Instant};
+//! Mocking structs for test!
+use std::{collections::HashMap, time::Instant};
 
 use crate::{
     identifier::{SenderIdentifiers, TransactionId},
@@ -7,14 +8,18 @@ use crate::{
     validate::ValidPoolTransaction,
 };
 use paste::paste;
-use primitives::types::{Address, B256, ChainId, TxHash, U256};
-use rand::{distr::Uniform, prelude::Distribution};
+use primitives::{
+    account::Account,
+    types::{Address, B256, ChainId, StorageKey, StorageValue, TxHash, U256},
+};
+use storage::state::StateProviderFactory;
+use transaction::transaction::TxEnvelope;
 
+/// Mocking Types
 pub type MockValidTx = ValidPoolTransaction<MockTransaction>;
+pub type MockOrdering = PintOrdering<MockTransaction>;
 
-/*
-   Rust 2024 edition에선 &mut $field나 ref mut $field가 매크로 변수로는 사용 불가해.
-*/
+// In Rust 2024 edition, we can't use &mut $field or ref mut $field as macro variable.
 macro_rules! set_value {
     ($this:ident => $field:ident) => {
         let value = $field;
@@ -52,7 +57,8 @@ macro_rules! make_setters_getters {
     }
 }
 
-// Transaction Factory that Mocking validate Tx
+/// Transaction Factory that Mocking validate Tx
+/// It means, we validate txs with no validation!!
 #[derive(Debug, Default)]
 pub struct MockTransactionFactory {
     pub(crate) ids: SenderIdentifiers,
@@ -63,7 +69,6 @@ impl MockTransactionFactory {
         let sender = self.ids.sender_id_or_create(tx.sender());
         TransactionId::new(sender, tx.get_nonce())
     }
-
     // This mocks validation of the transaction.
     // This validation functhion check transaction formats only.
     // Not validate on_chain_balance / on_chain_nonce
@@ -102,7 +107,7 @@ pub enum MockTransaction {
 impl MockTransaction {
     make_setters_getters! {
         chain_id => ChainId;
-        hash => B256;
+        hash => TxHash;
         sender => Address;
         fee => u128;
         nonce => u64;
@@ -158,6 +163,39 @@ impl PoolTransaction for MockTransaction {
     fn cost(&self) -> U256 {
         U256::from(self.get_fee())
     }
+
+    type Pooled = TxEnvelope;
+
+    fn from_pooled(tx: primitives::signed::Recovered<Self::Pooled>) -> Self {
+        todo!()
+    }
 }
 
-pub type MockOrdering = PintOrdering<MockTransaction>;
+/// A provider for mocking!
+#[derive(Default)]
+pub struct MockPintProvider {}
+
+impl MockPintProvider {
+    pub fn add_account(&mut self, address: Address, account: ExtendedAccount) {}
+}
+
+impl StateProviderFactory for MockPintProvider {
+    fn latest(&self) -> storage::state::ProviderResult<storage::state::StateProviderBox> {
+        todo!()
+    }
+}
+
+pub struct ExtendedAccount {
+    account: Account,
+    storage: HashMap<StorageKey, StorageValue>,
+}
+
+impl ExtendedAccount {
+    pub fn new(nonce: u64, balance: U256) -> Self {
+        let account = Account { nonce, balance };
+        Self {
+            account,
+            storage: Default::default(),
+        }
+    }
+}

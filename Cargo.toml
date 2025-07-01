@@ -7,7 +7,7 @@ license = "MIT"
 members = [
     "pint", "primitives",
     "transaction", "block", "transaction_pool"
-]
+, "net", "storage"]
 default-members = ["pint"]
 exclude = []
 
@@ -20,5 +20,11 @@ transaction = { path = "transaction" }
 primitives = { path = "primitives" }
 block = { path = "block" }
 transaction_pool = { path = "transaction_pool" }
+net = { path = "net" }
+storage = { path = "storage" }
 alloy-consensus = { version = "1.0.7", default-features = false }
 tokio = { version = "1.0.7", features = ["full"] }
+tracing = { version = "0.1.41" }
+lock_api = { version = "0.4.13" }
+parking_lot = { version =  "0.12.4" }
+hex = { version = "0.4.3" }

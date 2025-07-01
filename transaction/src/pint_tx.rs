@@ -1,17 +1,34 @@
+//! PintTx
+//! [PintTx] is a representative transaction for this PintL1 Project.
 use primitives::{
-    transaction::Encodable, types::{Address, ChainId, Signature, TxHash, B256, U256}
+    error::{DecodeError, EncodeError},
+    signed::Signature,
+    transaction::{Decodable, Encodable, SignableTransaction},
+    types::{Address, B256, ChainId, TxHash, U256},
 };
 use sha2::{Digest, Sha256};
 
 use crate::transaction::IntoTransaction;
 
+/// PintTx
 #[derive(Debug, Clone)]
 pub struct PintTx {
-    pub chain_id: ChainId,
-    pub nonce: u64,
-    pub to: Address,
-    pub fee: u128,
-    pub value: U256,
+    pub chain_id: ChainId, // 8
+    pub nonce: u64,        // 8
+    pub to: Address,       // 20
+    pub fee: u128,         // 16
+    pub value: U256,       // 32
+}
+
+impl PintTx {
+    fn size() -> usize {
+        let size = size_of::<ChainId>()
+            + size_of::<u64>()
+            + size_of::<Address>()
+            + size_of::<u128>()
+            + size_of::<U256>();
+        size
+    }
 }
 
 impl primitives::Transaction for PintTx {
@@ -30,15 +47,46 @@ impl primitives::Transaction for PintTx {
     }
 }
 
-impl Encodable<Signature> for PintTx {
-    fn tx_hash(self, signature: &Signature) -> TxHash {
-        let mut hasher = Sha256::new();
-        hasher.update(self.chain_id.to_string().as_bytes());
-        hasher.update(self.nonce.to_string().as_bytes());
-        hasher.update(self.to.get_addr().as_bytes());
-        hasher.update(self.value.to_string().as_bytes());
-        hasher.update(signature.as_bytes());
-        B256::from_slice(&hasher.finalize())
+impl Encodable for PintTx {
+    fn encode(&self) -> Result<Vec<u8>, EncodeError> {
+        let mut arr: [u8; 84] = [0u8; 84];
+
+        arr[0..8].copy_from_slice(&self.chain_id.to_be_bytes());
+        arr[8..16].copy_from_slice(&self.nonce.to_be_bytes());
+        arr[16..36].copy_from_slice(&self.to.get_addr());
+        arr[36..52].copy_from_slice(&self.fee.to_be_bytes());
+        arr[52..].copy_from_slice(&self.value.to_be_bytes::<32>());
+
+        Ok(arr.to_vec())
+    }
+}
+
+impl Decodable for PintTx {
+    fn decode(data: &Vec<u8>) -> Result<(Self, usize), primitives::error::DecodeError> {
+        let raw: [u8; 84] = match data[1..85].try_into() {
+            Ok(arr) => arr,
+            Err(_) => return Err(DecodeError::InputTooShort),
+        };
+
+        let chain_id: ChainId = ChainId::from_be_bytes(raw[0..8].try_into()?);
+        let nonce: u64 = u64::from_be_bytes(raw[8..16].try_into()?);
+        let to = match Address::from_hex(hex::encode(&raw[16..36])) {
+            Ok(addr) => addr,
+            Err(_) => return Err(DecodeError::InvalidAddress),
+        };
+        let fee: u128 = u128::from_be_bytes(raw[36..52].try_into()?);
+        let value: U256 = U256::from_be_bytes::<32>(raw[52..84].try_into()?);
+
+        Ok((
+            Self {
+                chain_id,
+                nonce,
+                to,
+                fee,
+                value,
+            },
+            85 as usize,
+        ))
     }
 }
 
@@ -48,25 +96,20 @@ impl IntoTransaction for PintTx {
     }
 }
 
-#[cfg(test)] 
-mod tests {
-    use std::str::FromStr;
+impl SignableTransaction<Signature> for PintTx {
+    fn into_signed(self, signature: Signature) -> primitives::signed::Signed<Self, Signature>
+    where
+        Self: Sized,
+    {
+        todo!()
+    }
 
-    use super::*;
-
-    #[test]
-    fn test_pint_tx_hash_and_convert_signed() {
-        let ptx = PintTx {
-            chain_id: 0,
-            nonce: 0,
-            fee: 0, 
-            to: Address::new("deadbeef".to_string()),
-            value: U256::from(1)
-        };
-
-        let signature = Signature::from_str("48b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353efffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c8041b").unwrap();
-        let hash = ptx.tx_hash(&signature);
-
-        println!("{:?}", hash);
+    fn encode_for_signing(&self) -> TxHash {
+        let mut hasher = Sha256::new();
+        hasher.update(self.chain_id.to_string().as_bytes());
+        hasher.update(self.nonce.to_string().as_bytes());
+        hasher.update(self.to.get_addr());
+        hasher.update(self.value.to_string().as_bytes());
+        B256::from_slice(&hasher.finalize())
     }
 }

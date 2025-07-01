@@ -1,3 +1,5 @@
+//! Ordering for Transaction Pool
+//! It defines all of the ordering or transactions like [Pint](transaction::pint_tx)
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
@@ -5,6 +7,16 @@ use primitives::types::U256;
 
 use crate::traits::PoolTransaction;
 
+/// Transaction Ordering
+/// It contains Transaction Type and Priority Value
+pub trait TransactionOrdering: Debug + Send {
+    type Transaction: PoolTransaction;
+    type PriorityValue: Clone + Debug + Send + Sync;
+
+    fn priority(&self, transaction: &Self::Transaction) -> Priority<Self::PriorityValue>;
+}
+
+// Priority enum
 #[derive(PartialEq, Clone, Debug)]
 pub enum Priority<T> {
     Value(T),
@@ -19,13 +31,7 @@ impl<T> From<Option<T>> for Priority<T> {
     }
 }
 
-pub trait TransactionOrdering: Debug + Send {
-    type Transaction: PoolTransaction;
-    type PriorityValue: Clone + Debug;
-
-    fn priority(&self, transaction: &Self::Transaction) -> Priority<Self::PriorityValue>;
-}
-
+/// Implements [Pint](transaction::pint_tx) Ordering
 #[derive(Debug)]
 pub struct PintOrdering<T>(PhantomData<T>);
 

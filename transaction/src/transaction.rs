@@ -1,20 +1,24 @@
-use std::sync::OnceLock;
-use primitives::types::{TransactionSigned, TxHash};
-
+//! Transactions for PintL1
+use k256::{EncodedPoint, ecdsa::VerifyingKey};
 use primitives::{
-    types::{ChainId, U256, Signature},
-    transaction::{SignableTransaction, Encodable},
+    error::{DecodeError, EncodeError, RecoveryError},
+    signed::{Signature, Signed, SignerRecovable},
+    transaction::{Decodable, Encodable, SignableTransaction, SignedTransaction},
+    types::{Address, B256, ChainId, TxHash, U256},
 };
+use sha2::{Digest, Sha256};
 
 use crate::PintTx;
 
-// 매크로 정의는 반드시 매크로 호출보다 먼저 위치해야 한다.
+// Macro definitions must appear before any macro invocations.
 /*
-    expr: 표현식 역할을 해야 한다. ident: 식별자 역할을 해야 한다
-    tx는 enum payload에 임시로 붙인 변수 이름
-    method는 메소드 이름 ex) chain_id()
-    $($arg:expr),*: 표현식 하나를 args 라는 이름으로 캡쳐, ,* 쉼표로 반복하겠다 라는 뜻.
-    *: 0번 이상, +: 1번 이상 반복한다는 뜻
+    - `expr`: Represents an expression.
+    - `ident`: Represents an identifier (e.g., a variable or method name).
+    - `tx`: A temporary variable name used in the enum payload.
+    - `method`: Refers to a method name (e.g., `chain_id()`).
+    - `$($arg:expr),*`: Captures one or more expressions as `args`, separated by commas.
+    - `*`: Means "zero or more" repetitions.
+    - `+`: Means "one or more" repetitions.
 */
 macro_rules! delegate {
     ($self:expr => $tx:ident.$method:ident($($arg:expr),*)) => {
@@ -24,11 +28,12 @@ macro_rules! delegate {
     };
 }
 
+/// Transactions for PintL1 in enum types
 #[derive(Debug, Clone)]
 pub enum Transaction {
     Pint(PintTx),
 }
- 
+
 impl primitives::Transaction for Transaction {
     fn chain_id(&self) -> ChainId {
         delegate!(self => tx.chain_id())
@@ -45,16 +50,45 @@ impl primitives::Transaction for Transaction {
     }
 }
 
+impl Encodable for Transaction {
+    fn encode(&self) -> Result<Vec<u8>, EncodeError> {
+        let (tid, tx_data): (u8, Vec<u8>) = match self {
+            Transaction::Pint(pint_tx) => (0, pint_tx.encode()?),
+        };
 
-// 이건 구체 타입 impl
-// impl<T> trait<T> 이게 제너릭 impl
-impl SignableTransaction<Signature> for Transaction {
-    fn into_signed(self, signature: Signature) -> TransactionSigned<Self>{
-        let tx_hash = delegate!(self.clone() => tx.tx_hash(&signature));
-        TransactionSigned::new(self, signature, tx_hash)
+        let arr = vec![tid];
+        let res = [arr, tx_data].concat();
+        Ok(res)
     }
 }
 
+impl Decodable for Transaction {
+    fn decode(vec: &Vec<u8>) -> Result<(Self, usize), DecodeError> {
+        let tx_type = vec[0];
+        match tx_type {
+            0 => {
+                let (pint_tx, size) = PintTx::decode(vec)?;
+                Ok((Transaction::Pint(pint_tx), size))
+            }
+            _ => Err(DecodeError::InvalidTxType),
+        }
+    }
+}
+
+// This is a concrete type implementation.
+// `impl<T> Trait<T>` is a generic implementation.
+impl SignableTransaction<Signature> for Transaction {
+    fn into_signed(self, signature: Signature) -> Signed<Self> {
+        let tx_hash = delegate!(self.clone() => tx.encode_for_signing());
+        Signed::new(self, signature, tx_hash)
+    }
+
+    fn encode_for_signing(&self) -> B256 {
+        delegate!(self => tx.encode_for_signing())
+    }
+}
+
+// From Transaction to enum Transaction
 pub trait IntoTransaction {
     fn into_transaction(self) -> Transaction;
 }
@@ -65,30 +99,180 @@ impl Transaction {
     }
 }
 
+/// Transactions for Signed PintL1 in enum types
+#[derive(Debug, Clone)]
+pub enum TxEnvelope {
+    Pint(Signed<PintTx>),
+}
 
-#[cfg(test)]
-mod tests {
-    use std::str::FromStr;
+impl TxEnvelope {
+    // Identification Role of SignedTx
+    pub fn hash(&self) -> TxHash {
+        match self {
+            TxEnvelope::Pint(signed_tx) => signed_tx.hash(),
+        }
+    }
 
-    use primitives::types::Address;
+    pub fn cost(&self) -> U256 {
+        match self {
+            TxEnvelope::Pint(signed_tx) => signed_tx.cost(),
+        }
+    }
 
-    use super::*;
+    pub fn signature_hash(&self) -> TxHash {
+        match self {
+            TxEnvelope::Pint(signed_tx) => signed_tx.signature_hash(),
+        }
+    }
 
-    #[test]
-    fn test_into_signed() {
-        let ptx = PintTx {
-            chain_id: 0,
-            nonce: 0,
-            fee: 0,
-            to: Address::new("deadbeef".to_string()),
-            value: U256::from(1)
-        };
-
-        let tx: Transaction = Transaction::from::<PintTx>(ptx);
-        let signature = Signature::from_str("48b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353efffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c8041b").unwrap();
-        let signed_tx = tx.into_signed(signature);
-
-        println!("{:?}", signed_tx);
+    pub fn signature(&self) -> &Signature {
+        match self {
+            TxEnvelope::Pint(signed_tx) => signed_tx.signature(),
+        }
     }
 }
 
+impl Encodable for TxEnvelope {
+    fn encode(&self) -> Result<Vec<u8>, EncodeError> {
+        match self {
+            TxEnvelope::Pint(signed_tx) => signed_tx.encode(),
+        }
+    }
+}
+
+impl Decodable for TxEnvelope {
+    fn decode(data: &Vec<u8>) -> Result<(Self, usize), DecodeError> {
+        let (tx, _) = Signed::<Transaction>::decode(data)?;
+        match tx.transaction() {
+            Transaction::Pint(pint_tx) => Ok((
+                TxEnvelope::Pint(Signed::new(
+                    pint_tx.clone(),
+                    tx.signature().clone(),
+                    tx.hash(),
+                )),
+                0,
+            )),
+        }
+    }
+}
+
+impl primitives::Transaction for TxEnvelope {
+    fn chain_id(&self) -> ChainId {
+        match self {
+            TxEnvelope::Pint(signed_tx) => signed_tx.chain_id(),
+        }
+    }
+
+    fn nonce(&self) -> u64 {
+        match self {
+            TxEnvelope::Pint(signed_tx) => signed_tx.nonce(),
+        }
+    }
+
+    fn value(&self) -> U256 {
+        match self {
+            TxEnvelope::Pint(signed_tx) => signed_tx.value(),
+        }
+    }
+
+    fn get_priority(&self) -> Option<u128> {
+        match self {
+            TxEnvelope::Pint(signed_tx) => signed_tx.get_priority(),
+        }
+    }
+}
+
+impl SignedTransaction for TxEnvelope {
+    fn tx_hash(&self) -> TxHash {
+        self.hash()
+    }
+}
+
+impl SignerRecovable for TxEnvelope {
+    fn recover_signer(&self) -> Result<Address, primitives::error::RecoveryError> {
+        let signature_hash: TxHash = self.signature_hash();
+        let signature = self.signature().clone();
+
+        let recid = match signature.get_recovery_id() {
+            Some(recid) => recid,
+            None => return Err(RecoveryError::RecIdError),
+        };
+
+        let recover_signature = signature.into();
+
+        let recovered_key = match VerifyingKey::recover_from_digest(
+            Sha256::new_with_prefix(signature_hash),
+            &recover_signature,
+            recid,
+        ) {
+            Ok(rec_key) => rec_key,
+            Err(_) => return Err(RecoveryError::RecKeyError),
+        };
+
+        let recovered_pubkey_uncompressed: EncodedPoint = recovered_key.to_encoded_point(false);
+        let recovered_pubkey_bytes = recovered_pubkey_uncompressed.as_bytes();
+        let recovered_address = &recovered_pubkey_bytes[recovered_pubkey_bytes.len() - 20..];
+
+        Ok(Address::from_hex(hex::encode(recovered_address))?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use k256::ecdsa::{RecoveryId, Signature as ECDSASig, SigningKey};
+    use rand::Rng;
+
+    use super::*;
+
+    fn get_random_seed() -> [u8; 32] {
+        let mut seed = [0u8; 32];
+        let mut rng = rand::rng();
+        rng.fill(&mut seed);
+        seed
+    }
+
+    fn get_priv_pub_key(seed: &[u8]) -> (SigningKey, Vec<u8>) {
+        let private_key_random = Sha256::digest(&seed);
+        let signing_key = SigningKey::from_bytes(&private_key_random).unwrap();
+        let verifying_key = signing_key.clone().verifying_key().clone();
+        let pubkey_uncompressed: EncodedPoint = verifying_key.to_encoded_point(false);
+        let pubkey_bytes = pubkey_uncompressed.as_bytes();
+        let address = pubkey_bytes[pubkey_bytes.len() - 20..].to_vec();
+        (signing_key, address)
+    }
+
+    #[test]
+    fn test_encode_and_decode_transaction() {
+        let (signing_key, sender) = get_priv_pub_key("hello".as_bytes());
+        let sender = Address::from_byte(sender.try_into().unwrap());
+        dbg!(&sender.get_addr_hex());
+        let (_, receiver) = get_priv_pub_key("wow".as_bytes());
+        let receiver = Address::from_byte(receiver.try_into().unwrap());
+        dbg!(receiver.get_addr_hex());
+        let pint_tx = PintTx {
+            chain_id: 0,
+            nonce: 0,
+            to: receiver,
+            fee: 1,
+            value: U256::from(1),
+        };
+
+        let tx = Transaction::Pint(pint_tx);
+        let tx_hash = tx.encode_for_signing();
+        let digest = Sha256::new_with_prefix(tx_hash);
+        let (signature, recid): (ECDSASig, RecoveryId) =
+            signing_key.sign_digest_recoverable(digest).unwrap();
+
+        let sig = Signature::from_sig(signature, recid);
+
+        let signed = Signed::<Transaction>::new(tx, sig, tx_hash);
+
+        let encoded = signed.encode().unwrap();
+        dbg!(hex::encode(&encoded));
+
+        let (recovered_signed, _) = Signed::<Transaction>::decode(&encoded).unwrap();
+        let recovered_sender = recovered_signed.recover_signer().unwrap();
+
+        assert_eq!(sender, recovered_sender);
+    }
+}

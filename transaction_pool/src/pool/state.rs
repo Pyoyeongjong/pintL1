@@ -1,3 +1,4 @@
+//! Implements [TxState] and [SubPool]
 // TODO: It can be canged to bitflags using bitflag! macro library!
 // refer reth/transaction_pool/pool/state.rs TxState
 #[derive(Default, Clone, Copy)]

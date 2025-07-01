@@ -1,14 +1,11 @@
+//! Implementation of [ParkedPool] and [ParkedPoolTransaction]
 use std::{collections::BTreeMap, sync::Arc};
 
 use crate::{
     identifier::TransactionId, ordering::TransactionOrdering, validate::ValidPoolTransaction,
 };
 
-struct ParkedPoolTransaction<T: TransactionOrdering> {
-    transaction: Arc<ValidPoolTransaction<T::Transaction>>,
-    submission_id: u64,
-}
-// It should be same as queue_pool!
+/// PintL1 ParkedPool: It should be same as queue_pool!
 pub struct ParkedPool<T: TransactionOrdering> {
     // Keeps track of when transaction was inserted in this pool by id
     submission_id: u64,
@@ -55,4 +52,10 @@ impl<T: TransactionOrdering> Default for ParkedPool<T> {
             by_id: Default::default(),
         }
     }
+}
+
+/// ParkedPoolTransaction
+struct ParkedPoolTransaction<T: TransactionOrdering> {
+    transaction: Arc<ValidPoolTransaction<T::Transaction>>,
+    submission_id: u64,
 }

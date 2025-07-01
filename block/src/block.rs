@@ -1,7 +1,7 @@
 use core::time;
+use primitives::types::{B256, BlockHash, TxHash};
+use sha2::{Digest, Sha256};
 use std::sync::OnceLock;
-use primitives::types::{BlockHash, TxHash, B256};
-use sha2::{Sha256, Digest};
 
 #[derive(Debug)]
 pub struct Header {
@@ -26,12 +26,12 @@ impl Header {
 #[derive(Debug)]
 pub struct Block<T, H = Header> {
     pub header: H,
-    pub body: BlockBody<T>
+    pub body: BlockBody<T>,
 }
 
 impl<T, H> Block<T, H> {
     pub const fn new(header: H, body: BlockBody<T>) -> Self {
-        Self { header, body } 
+        Self { header, body }
     }
 
     pub fn into_header(self) -> H {
@@ -43,9 +43,8 @@ impl<T, H> Block<T, H> {
     }
 }
 
-
 // TODO: Implement SealedHeader
-// Runtime Memory Cache Structure
+// Runtime Memory Cache Structure for block header with block hash
 pub struct SealedHeader<H = Header> {
     hash: OnceLock<BlockHash>,
     header: H,
@@ -61,7 +60,5 @@ mod tests {
     use super::*;
 
     #[test]
-    fn make_block() {
-        
-    }
+    fn make_block() {}
 }

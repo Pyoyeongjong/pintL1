@@ -7,9 +7,13 @@ license.workspace = true
 [dependencies]
 paste = "1.0.15"
 primitives.workspace = true
+transaction.workspace = true
+storage.workspace = true
 rand = "0.9.1"
 tokio.workspace = true
 tracing.workspace = true
+parking_lot.workspace = true
+hex.workspace = true
 
 [lints]
 workspace = true

@@ -1,13 +1,10 @@
+//! Implementation of [PendingPool] and [PendingPoolTransaction]
 use std::{collections::BTreeMap, sync::Arc};
-
 use tokio::sync::broadcast;
 
 use crate::identifier::TransactionId;
-use crate::{
-    ordering::TransactionOrdering,
-    pool::{best::BestTransactions, txpool::PendingTransaction},
-    validate::ValidPoolTransaction,
-};
+use crate::ordering::Priority;
+use crate::{ordering::TransactionOrdering, validate::ValidPoolTransaction};
 #[derive(Clone)]
 pub struct PendingPool<T: TransactionOrdering> {
     // How to order transactions.
@@ -16,10 +13,10 @@ pub struct PendingPool<T: TransactionOrdering> {
     submission_id: u64,
     // All Transactions that are currently inside the pool grouped by their
     // identifier.
-    by_id: BTreeMap<TransactionId, PendingTransaction<T>>,
+    by_id: BTreeMap<TransactionId, PendingPoolTransaction<T>>,
     // Used to broadcast new transactions that have been added to the
     // `PendingPool` to `static_subscriber(files)` of this pool
-    new_transaction_notifier: broadcast::Sender<PendingTransaction<T>>,
+    new_transaction_notifier: broadcast::Sender<PendingPoolTransaction<T>>,
 }
 
 impl<T: TransactionOrdering> PendingPool<T> {
@@ -35,13 +32,6 @@ impl<T: TransactionOrdering> PendingPool<T> {
 
     pub fn len(&self) -> usize {
         self.by_id.len()
-    }
-
-    pub fn best(&self) -> BestTransactions<T> {
-        BestTransactions {
-            all: self.by_id.clone(),
-            new_transaction_receiver: Some(self.new_transaction_notifier.subscribe()),
-        }
     }
 
     pub fn add_transaction(
@@ -60,7 +50,7 @@ impl<T: TransactionOrdering> PendingPool<T> {
         let submission_id = self.next_id();
         let priority = self.ordering.priority(&tx.transaction);
 
-        let tx = PendingTransaction {
+        let tx = PendingPoolTransaction {
             submission_id,
             transaction: tx,
             priority,
@@ -87,11 +77,30 @@ impl<T: TransactionOrdering> PendingPool<T> {
         id
     }
 
-    fn get(&self, id: &TransactionId) -> Option<&PendingTransaction<T>> {
+    fn get(&self, id: &TransactionId) -> Option<&PendingPoolTransaction<T>> {
         self.by_id.get(id)
     }
 
     fn contains(&self, id: &TransactionId) -> bool {
         self.by_id.contains_key(id)
+    }
+}
+
+// A transaction that is ready to be incloded in a block.
+// pub(crate): is public inside this crate ( can't use this outside! )
+#[derive(Debug)]
+pub(crate) struct PendingPoolTransaction<T: TransactionOrdering> {
+    pub(crate) submission_id: u64,
+    pub(crate) transaction: Arc<ValidPoolTransaction<T::Transaction>>,
+    pub(crate) priority: Priority<T::PriorityValue>,
+}
+
+impl<T: TransactionOrdering> Clone for PendingPoolTransaction<T> {
+    fn clone(&self) -> Self {
+        Self {
+            submission_id: self.submission_id,
+            transaction: Arc::clone(&self.transaction),
+            priority: self.priority.clone(),
+        }
     }
 }

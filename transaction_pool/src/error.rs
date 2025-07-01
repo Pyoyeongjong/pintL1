@@ -1,8 +1,7 @@
-use std::sync::Arc;
-
-use primitives::types::TxHash;
-
+//! Errors for Transaction Pool
 use crate::{traits::PoolTransaction, validate::ValidPoolTransaction};
+use primitives::types::TxHash;
+use std::sync::Arc;
 
 pub type PoolResult<T> = Result<T, PoolError>;
 
@@ -33,3 +32,6 @@ pub enum InsertErr<T: PoolTransaction> {
         transaction: Arc<ValidPoolTransaction<T>>,
     },
 }
+
+#[derive(Debug)]
+pub enum InvalidPoolTransactionError {}

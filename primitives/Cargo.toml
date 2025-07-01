@@ -7,6 +7,8 @@ license.workspace = true
 [dependencies]
 alloy-primitives = { version = "1.2.0", features = ["rand"] }
 hex = "0.4.3"
+k256 = "0.13.4"
+parking_lot = "0.12.4"
 rand = "0.9.1"
 
 [lints]
