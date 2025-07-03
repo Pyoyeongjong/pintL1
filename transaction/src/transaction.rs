@@ -106,6 +106,11 @@ pub enum TxEnvelope {
 }
 
 impl TxEnvelope {
+    pub fn tx_type(&self) -> u8 {
+        match self {
+            TxEnvelope::Pint(signed_tx) => signed_tx.transaction().tx_type(),
+        }
+    }
     // Identification Role of SignedTx
     pub fn hash(&self) -> TxHash {
         match self {
@@ -224,13 +229,6 @@ mod tests {
 
     use super::*;
 
-    fn get_random_seed() -> [u8; 32] {
-        let mut seed = [0u8; 32];
-        let mut rng = rand::rng();
-        rng.fill(&mut seed);
-        seed
-    }
-
     fn get_priv_pub_key(seed: &[u8]) -> (SigningKey, Vec<u8>) {
         let private_key_random = Sha256::digest(&seed);
         let signing_key = SigningKey::from_bytes(&private_key_random).unwrap();
@@ -242,7 +240,7 @@ mod tests {
     }
 
     #[test]
-    fn test_encode_and_decode_transaction() {
+    fn test_transaction_encode_and_decode_transaction() {
         let (signing_key, sender) = get_priv_pub_key("hello".as_bytes());
         let sender = Address::from_byte(sender.try_into().unwrap());
         dbg!(&sender.get_addr_hex());
@@ -253,7 +251,7 @@ mod tests {
             chain_id: 0,
             nonce: 0,
             to: receiver,
-            fee: 1,
+            fee: 0,
             value: U256::from(1),
         };
 

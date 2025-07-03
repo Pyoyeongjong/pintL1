@@ -1,7 +1,7 @@
 //! Implementation of the Transaction Pool [Pool]
 //! [Pool] is the top level structure for transaction pool
 //! It manages mempool & validation part.
-use std::sync::Arc;
+use std::{sync::Arc, vec};
 
 use primitives::types::TxHash;
 
@@ -11,7 +11,7 @@ use crate::{
     ordering::TransactionOrdering,
     pool::PoolInner,
     traits::{PoolTransaction, TransactionOrigin, TransactionPool},
-    validate::{TransactionValidationOutcome, TransactionValidator},
+    validate::{TransactionValidationOutcome, TransactionValidator, ValidPoolTransaction},
 };
 
 mod config;
@@ -36,6 +36,10 @@ where
         Self {
             pool: Arc::new(PoolInner::new(validator, ordering, config)),
         }
+    }
+
+    pub fn inner(&self) -> &PoolInner<V, T> {
+        &self.pool
     }
 
     async fn validate(
@@ -68,6 +72,14 @@ where
         origin: TransactionOrigin,
         transaction: Self::Transaction,
     ) -> PoolResult<TxHash> {
-        todo!()
+        let (_, tx) = self.validate(origin, transaction).await;
+        let mut tx_hash = self.pool.add_transactions(origin, std::iter::once(tx));
+        tx_hash
+            .pop()
+            .expect("result length should same as the input")
+    }
+
+    fn get(&self, tx_hash: &TxHash) -> Option<Arc<ValidPoolTransaction<Self::Transaction>>> {
+        self.inner().get(tx_hash)
     }
 }

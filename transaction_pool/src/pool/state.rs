@@ -1,19 +1,19 @@
 //! Implements [TxState] and [SubPool]
-// TODO: It can be canged to bitflags using bitflag! macro library!
+// TODO: It can be canged to bitflags using bitflag, macro library!
 // refer reth/transaction_pool/pool/state.rs TxState
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, Debug)]
 pub struct TxState {
-    has_fee: bool,
+    has_balance: bool,
     has_ancestor: bool,
 }
 
 impl TxState {
-    pub fn has_fee(&mut self) {
-        self.has_fee = true;
+    pub fn has_balance(&mut self) {
+        self.has_balance = true;
     }
 
-    pub fn has_no_fee(&mut self) {
-        self.has_fee = false;
+    pub fn has_no_balance(&mut self) {
+        self.has_balance = false;
     }
 
     pub fn has_ancestor(&mut self) {
@@ -42,7 +42,7 @@ impl SubPool {
 
 impl From<TxState> for SubPool {
     fn from(value: TxState) -> Self {
-        match value.has_fee && !value.has_ancestor {
+        match value.has_balance && !value.has_ancestor {
             true => SubPool::Pending,
             false => SubPool::Parked,
         }

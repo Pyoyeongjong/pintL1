@@ -1,6 +1,6 @@
 //! Traits for Transaction Pool
 use core::default::Default;
-use std::fmt::Debug;
+use std::{fmt::Debug, sync::Arc};
 
 use primitives::{
     Transaction,
@@ -10,7 +10,7 @@ use primitives::{
 };
 use transaction::{TransactionSigned, transaction::TxEnvelope};
 
-use crate::error::PoolResult;
+use crate::{error::PoolResult, validate::ValidPoolTransaction};
 
 /// Origin of the Transaction
 #[derive(Debug, Default, Clone, Copy)]
@@ -24,6 +24,7 @@ pub enum TransactionOrigin {
 /// A traits for transaction whether it can be validated to [Pool](crate::Pool)
 pub trait PoolTransaction: Debug + Transaction {
     type Pooled: SignedTransaction;
+    fn tx_type(&self) -> u8;
     fn hash(&self) -> TxHash;
     fn sender(&self) -> Address;
     fn cost(&self) -> U256;
@@ -46,6 +47,8 @@ pub trait TransactionPool {
         origin: TransactionOrigin,
         transaction: Self::Transaction,
     ) -> impl Future<Output = PoolResult<TxHash>> + Send;
+
+    fn get(&self, tx_hash: &TxHash) -> Option<Arc<ValidPoolTransaction<Self::Transaction>>>;
 }
 
 /// The default [`PoolTransaction`] for the [Pool](crate::Pool)
@@ -73,12 +76,16 @@ impl Transaction for PintPooledTransaction {
 }
 
 impl PoolTransaction for PintPooledTransaction {
+    fn tx_type(&self) -> u8 {
+        self.transaction.inner().tx_type()
+    }
+
     fn hash(&self) -> TxHash {
         self.transaction.inner().hash().clone()
     }
 
     fn sender(&self) -> Address {
-        todo!()
+        self.transaction.signer().clone()
     }
 
     fn cost(&self) -> U256 {
@@ -91,6 +98,6 @@ impl PoolTransaction for PintPooledTransaction {
     type Pooled = TxEnvelope;
 
     fn from_pooled(tx: Recovered<Self::Pooled>) -> Self {
-        todo!()
+        Self { transaction: tx }
     }
 }

@@ -50,7 +50,10 @@ pub trait SignableTransaction<Signature>: Transaction {
     // Convert to a ['Signed'] Object
     fn into_signed(self, signature: Signature) -> Signed<Self, Signature>
     where
-        Self: Sized;
+        Self: Sized,
+    {
+        Signed::new_unhashed(self, signature)
+    }
 
     fn encode_for_signing(&self) -> B256;
 }

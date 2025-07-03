@@ -3,6 +3,7 @@
 pub mod pint;
 
 use primitives::types::TxHash;
+use transaction::U256;
 
 use crate::{
     error::InvalidPoolTransactionError,
@@ -57,7 +58,12 @@ pub trait TransactionValidator: Send + Sync {
 /// Transaction Validator Outcome
 #[derive(Debug)]
 pub enum TransactionValidationOutcome<T: PoolTransaction> {
-    Valid { transaction: T },
+    Valid {
+        transaction: T,
+        balance: U256,
+        nonce: u64,
+        propagate: bool,
+    },
     Invalid(T, InvalidPoolTransactionError),
     Error(TxHash, Box<dyn core::error::Error + Send + Sync>),
 }

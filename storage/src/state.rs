@@ -1,9 +1,12 @@
 use core::fmt;
+use primitives::{account::Account, types::Address};
 
-pub trait StateProvider {}
+pub trait StateProvider {
+    fn basic_account(&self, address: &Address) -> Result<Option<Account>, ProviderError>;
+}
 
-pub type ProviderResult<Ok> = Result<Ok, ProviderError>;
 pub type StateProviderBox = Box<dyn StateProvider>;
+pub type ProviderResult<Ok> = Result<Ok, ProviderError>;
 
 #[derive(Debug)]
 pub enum ProviderError {

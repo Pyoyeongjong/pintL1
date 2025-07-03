@@ -1,9 +1,5 @@
 //! Errors for primitive trait or structs
-
-use std::{array::TryFromSliceError, error::Error, fmt, ops::Add};
-
-use alloy_primitives::Address;
-
+use std::{array::TryFromSliceError, error::Error, fmt};
 /// Signature Error
 #[derive(Debug)]
 pub enum SignatureError {

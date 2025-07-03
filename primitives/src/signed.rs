@@ -165,6 +165,16 @@ pub struct Signed<T, Sig = Signature> {
     hash: OnceLock<TxHash>,
 }
 
+impl<T, Sig> Signed<T, Sig> {
+    pub fn new_unhashed(tx: T, signature: Sig) -> Self {
+        Self {
+            tx,
+            signature,
+            hash: OnceLock::new(),
+        }
+    }
+}
+
 impl<T: SignableTransaction<Signature>> Signed<T> {
     pub fn new(tx: T, signature: Signature, hash: TxHash) -> Self {
         let value = OnceLock::new();

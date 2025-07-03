@@ -22,6 +22,7 @@ pub enum PoolErrorKind {
     AlreadyImported,
     InvalidTransaction,
     RelpacementUnderpriced,
+    ImportError,
 }
 
 pub enum InsertErr<T: PoolTransaction> {
@@ -34,4 +35,8 @@ pub enum InsertErr<T: PoolTransaction> {
 }
 
 #[derive(Debug)]
-pub enum InvalidPoolTransactionError {}
+pub enum InvalidPoolTransactionError {
+    TxTypeNotSupported,
+    NotEnoughFee,
+    NonceNotConsistent,
+}

@@ -129,6 +129,13 @@ impl<T: TransactionOrdering> TxPool<T> {
         self.remove_from_subpool(tx.id(), subpool)
     }
 
+    pub(crate) fn get(
+        &self,
+        tx_hash: &TxHash,
+    ) -> Option<Arc<ValidPoolTransaction<T::Transaction>>> {
+        self.all_transactions.by_hash.get(tx_hash).cloned()
+    }
+
     fn add_new_transaction(
         &mut self,
         transaction: Arc<ValidPoolTransaction<T::Transaction>>,
@@ -242,7 +249,7 @@ impl<T: PoolTransaction> AllTransactions<T> {
         );
 
         assert!(
-            U256::from(0) == transaction.transaction.cost(),
+            U256::from(0) < transaction.transaction.cost(),
             "Invalid transaction."
         );
 
@@ -250,11 +257,10 @@ impl<T: PoolTransaction> AllTransactions<T> {
         let tx = Arc::new(transaction);
         let mut replaced_tx = None;
 
-        if tx.transaction.cost() > U256::from(0) {
-            state.has_fee();
+        if tx.transaction.cost() + tx.transaction.value() <= on_chain_balance {
+            state.has_balance();
         } else {
-            state.has_no_fee();
-            return Err(InsertErr::InvalidTransaction { transaction: tx });
+            state.has_no_balance();
         }
 
         if tx.transaction.nonce() > on_chain_nonce {

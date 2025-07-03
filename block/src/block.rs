@@ -1,4 +1,3 @@
-use core::time;
 use primitives::types::{B256, BlockHash, TxHash};
 use sha2::{Digest, Sha256};
 use std::sync::OnceLock;

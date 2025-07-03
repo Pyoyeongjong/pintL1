@@ -1,5 +1,5 @@
 //! Mocking structs for test!
-use std::{collections::HashMap, time::Instant};
+use std::{collections::HashMap, sync::Arc, time::Instant};
 
 use crate::{
     identifier::{SenderIdentifiers, TransactionId},
@@ -7,12 +7,13 @@ use crate::{
     traits::{PoolTransaction, TransactionOrigin},
     validate::ValidPoolTransaction,
 };
+use parking_lot::Mutex;
 use paste::paste;
 use primitives::{
     account::Account,
     types::{Address, B256, ChainId, StorageKey, StorageValue, TxHash, U256},
 };
-use storage::state::StateProviderFactory;
+use storage::state::{ProviderResult, StateProvider, StateProviderBox, StateProviderFactory};
 use transaction::transaction::TxEnvelope;
 
 /// Mocking Types
@@ -66,7 +67,7 @@ pub struct MockTransactionFactory {
 
 impl MockTransactionFactory {
     pub fn tx_id(&mut self, tx: &MockTransaction) -> TransactionId {
-        let sender = self.ids.sender_id_or_create(tx.sender());
+        let sender = self.ids.sender_id_or_create(tx.sender().clone());
         TransactionId::new(sender, tx.get_nonce())
     }
     // This mocks validation of the transaction.
@@ -152,6 +153,13 @@ impl primitives::Transaction for MockTransaction {
 }
 
 impl PoolTransaction for MockTransaction {
+    type Pooled = TxEnvelope;
+
+    fn tx_type(&self) -> u8 {
+        match self {
+            Self::Pint { .. } => 0,
+        }
+    }
     fn hash(&self) -> TxHash {
         self.get_hash()
     }
@@ -164,24 +172,38 @@ impl PoolTransaction for MockTransaction {
         U256::from(self.get_fee())
     }
 
-    type Pooled = TxEnvelope;
-
-    fn from_pooled(tx: primitives::signed::Recovered<Self::Pooled>) -> Self {
-        todo!()
+    fn from_pooled(_: primitives::signed::Recovered<Self::Pooled>) -> Self {
+        MockTransaction::pint_tx()
     }
 }
 
 /// A provider for mocking!
-#[derive(Default)]
-pub struct MockPintProvider {}
+#[derive(Default, Clone)]
+pub struct MockPintProvider {
+    pub accounts: Arc<Mutex<HashMap<Address, ExtendedAccount>>>,
+}
 
 impl MockPintProvider {
-    pub fn add_account(&mut self, address: Address, account: ExtendedAccount) {}
+    pub fn add_account(&mut self, address: Address, account: ExtendedAccount) {
+        self.accounts.lock().insert(address, account);
+    }
+}
+
+impl StateProvider for MockPintProvider {
+    fn basic_account(
+        &self,
+        address: &Address,
+    ) -> Result<Option<Account>, storage::state::ProviderError> {
+        match self.accounts.lock().get(address) {
+            Some(extend_account) => Ok(Some(extend_account.account)),
+            None => Ok(None),
+        }
+    }
 }
 
 impl StateProviderFactory for MockPintProvider {
-    fn latest(&self) -> storage::state::ProviderResult<storage::state::StateProviderBox> {
-        todo!()
+    fn latest(&self) -> ProviderResult<StateProviderBox> {
+        Ok(Box::new(self.clone()))
     }
 }
 

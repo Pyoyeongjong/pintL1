@@ -1,11 +1,12 @@
 //! [PoolInner] implementation
 use parking_lot::{RwLock, RwLockWriteGuard};
-use primitives::types::TxHash;
-use std::sync::Arc;
+use primitives::types::{Address, TxHash};
+use std::{sync::Arc, time::Instant};
 
 use crate::{
     config::PoolConfig,
-    error::PoolResult,
+    error::{PoolError, PoolResult},
+    identifier::{SenderId, SenderIdentifiers, TransactionId},
     ordering::TransactionOrdering,
     pool::txpool::TxPool,
     traits::{PoolTransaction, TransactionOrigin},
@@ -23,6 +24,7 @@ where
     T: TransactionOrdering,
 {
     validator: V,
+    identifiers: RwLock<SenderIdentifiers>,
     pool: RwLock<TxPool<T>>,
 }
 
@@ -34,6 +36,7 @@ where
     pub fn new(validator: V, ordering: T, config: PoolConfig) -> Self {
         Self {
             validator: validator,
+            identifiers: Default::default(),
             pool: RwLock::new(TxPool::new(ordering, config)),
         }
     }
@@ -49,7 +52,6 @@ where
         transactions: impl IntoIterator<Item = TransactionValidationOutcome<T::Transaction>>,
     ) -> Vec<PoolResult<TxHash>> {
         // Add the transactions
-
         let mut pool = self.pool.write();
         let added = transactions
             .into_iter()
@@ -59,13 +61,60 @@ where
         added
     }
 
+    pub fn get_sender_id(&self, addr: Address) -> SenderId {
+        self.identifiers.write().sender_id_or_create(addr)
+    }
+
     fn add_transaction(
         &self,
         pool: &mut RwLockWriteGuard<'_, TxPool<T>>,
         origin: TransactionOrigin,
         tx: TransactionValidationOutcome<T::Transaction>,
     ) -> PoolResult<TxHash> {
-        todo!()
+        match tx {
+            TransactionValidationOutcome::Valid {
+                transaction,
+                balance,
+                nonce,
+                propagate,
+            } => {
+                let sender_id = self.get_sender_id(transaction.sender());
+                let transaction_id: TransactionId = TransactionId::new(sender_id, nonce);
+                let tx = ValidPoolTransaction {
+                    transaction,
+                    transaction_id,
+                    origin,
+                    timestamp: Instant::now(),
+                };
+
+                let added = pool.add_transaction(tx, balance, nonce)?;
+                Ok(added.hash())
+            }
+            TransactionValidationOutcome::Invalid(tx, _) => {
+                let pool_error = PoolError {
+                    hash: tx.hash(),
+                    kind: crate::error::PoolErrorKind::InvalidTransaction,
+                };
+                return Err(pool_error);
+            }
+            TransactionValidationOutcome::Error(tx_hash, _) => {
+                let pool_error = PoolError {
+                    hash: tx_hash,
+                    kind: crate::error::PoolErrorKind::ImportError,
+                };
+                return Err(pool_error);
+            }
+        }
+    }
+
+    pub fn get(&self, tx_hash: &TxHash) -> Option<Arc<ValidPoolTransaction<T::Transaction>>> {
+        self.get_pool_data().get(tx_hash)
+    }
+
+    fn get_pool_data(
+        &self,
+    ) -> parking_lot::lock_api::RwLockReadGuard<'_, parking_lot::RawRwLock, TxPool<T>> {
+        self.pool.read()
     }
 }
 
@@ -78,6 +127,15 @@ pub enum AddedTransaction<T: PoolTransaction> {
     Parked {
         transaction: Arc<ValidPoolTransaction<T>>,
     },
+}
+
+impl<T: PoolTransaction> AddedTransaction<T> {
+    pub fn hash(&self) -> TxHash {
+        match self {
+            Self::Pending(tx) => tx.transaction.hash(),
+            Self::Parked { transaction, .. } => transaction.hash(),
+        }
+    }
 }
 
 // Tracks an added transaction

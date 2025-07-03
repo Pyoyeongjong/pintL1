@@ -29,6 +29,10 @@ impl PintTx {
             + size_of::<U256>();
         size
     }
+
+    pub fn tx_type(&self) -> u8 {
+        0
+    }
 }
 
 impl primitives::Transaction for PintTx {
@@ -97,13 +101,6 @@ impl IntoTransaction for PintTx {
 }
 
 impl SignableTransaction<Signature> for PintTx {
-    fn into_signed(self, signature: Signature) -> primitives::signed::Signed<Self, Signature>
-    where
-        Self: Sized,
-    {
-        todo!()
-    }
-
     fn encode_for_signing(&self) -> TxHash {
         let mut hasher = Sha256::new();
         hasher.update(self.chain_id.to_string().as_bytes());
