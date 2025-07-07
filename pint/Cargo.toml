@@ -11,4 +11,5 @@ workspace = true
 alloy-primitives = "1.2.0"
 lock_api = "0.4.13"
 rand = "0.9.1"
+tokio-stream = "0.1.17"
 tracing = "0.1.41"

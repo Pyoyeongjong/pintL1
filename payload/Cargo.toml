@@ -1,0 +1,21 @@
+[package]
+name = "payload"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+hex = "0.4.3"
+primitives.workspace = true
+transaction_pool.workspace = true
+transaction.workspace = true
+executor.workspace = true
+storage.workspace = true
+
+tokio.workspace = true
+tokio-stream.workspace = true
+sha2 = "0.10.9"
+futures-util = "0.3.31"
+
+[lints]
+workspace = true

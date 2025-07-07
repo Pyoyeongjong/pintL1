@@ -1,6 +1,8 @@
-use primitives::types::{B256, BlockHash, TxHash};
-use sha2::{Digest, Sha256};
 use std::sync::OnceLock;
+
+use crate::types::{BlockHash, TxHash};
+use alloy_primitives::B256;
+use k256::sha2::{Digest, Sha256};
 
 #[derive(Debug)]
 pub struct Header {
@@ -21,26 +23,7 @@ impl Header {
     }
 }
 
-// For Disk Storage
-#[derive(Debug)]
-pub struct Block<T, H = Header> {
-    pub header: H,
-    pub body: BlockBody<T>,
-}
-
-impl<T, H> Block<T, H> {
-    pub const fn new(header: H, body: BlockBody<T>) -> Self {
-        Self { header, body }
-    }
-
-    pub fn into_header(self) -> H {
-        self.header
-    }
-
-    pub fn into_body(self) -> BlockBody<T> {
-        self.body
-    }
-}
+impl crate::block::traits::BlockHeader for Header {}
 
 // TODO: Implement SealedHeader
 // Runtime Memory Cache Structure for block header with block hash
@@ -49,15 +32,8 @@ pub struct SealedHeader<H = Header> {
     header: H,
 }
 
-#[derive(Debug)]
-pub struct BlockBody<T> {
-    pub transaction: Vec<T>,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn make_block() {}
+impl SealedHeader {
+    pub fn hash(&self) -> BlockHash {
+        *self.hash.get_or_init(|| self.header.hash_slow())
+    }
 }

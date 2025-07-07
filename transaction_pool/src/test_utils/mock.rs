@@ -13,7 +13,7 @@ use primitives::{
     account::Account,
     types::{Address, B256, ChainId, StorageKey, StorageValue, TxHash, U256},
 };
-use storage::state::{ProviderResult, StateProvider, StateProviderBox, StateProviderFactory};
+use storage::traits::{ProviderResult, StateProvider, StateProviderBox, StateProviderFactory};
 use transaction::transaction::TxEnvelope;
 
 /// Mocking Types
@@ -137,7 +137,7 @@ impl MockTransaction {
     }
 }
 
-impl primitives::Transaction for MockTransaction {
+impl transaction::traits::Transaction for MockTransaction {
     fn chain_id(&self) -> ChainId {
         self.get_chain_id()
     }
@@ -172,7 +172,7 @@ impl PoolTransaction for MockTransaction {
         U256::from(self.get_fee())
     }
 
-    fn from_pooled(_: primitives::signed::Recovered<Self::Pooled>) -> Self {
+    fn from_pooled(_: transaction::signed::Recovered<Self::Pooled>) -> Self {
         MockTransaction::pint_tx()
     }
 }
@@ -193,7 +193,7 @@ impl StateProvider for MockPintProvider {
     fn basic_account(
         &self,
         address: &Address,
-    ) -> Result<Option<Account>, storage::state::ProviderError> {
+    ) -> Result<Option<Account>, storage::error::ProviderError> {
         match self.accounts.lock().get(address) {
             Some(extend_account) => Ok(Some(extend_account.account)),
             None => Ok(None),
@@ -205,8 +205,16 @@ impl StateProviderFactory for MockPintProvider {
     fn latest(&self) -> ProviderResult<StateProviderBox> {
         Ok(Box::new(self.clone()))
     }
+
+    fn state_by_block_hash(
+        &self,
+        block: primitives::types::BlockHash,
+    ) -> ProviderResult<StateProviderBox> {
+        todo!()
+    }
 }
 
+/// Extended Account
 pub struct ExtendedAccount {
     account: Account,
     storage: HashMap<StorageKey, StorageValue>,

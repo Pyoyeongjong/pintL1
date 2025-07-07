@@ -1,14 +1,16 @@
 //! PintTx
 //! [PintTx] is a representative transaction for this PintL1 Project.
 use primitives::{
-    error::{DecodeError, EncodeError},
-    signed::Signature,
-    transaction::{Decodable, Encodable, SignableTransaction},
+    signature::Signature,
     types::{Address, B256, ChainId, TxHash, U256},
 };
 use sha2::{Digest, Sha256};
 
-use crate::transaction::IntoTransaction;
+use crate::{
+    error::{DecodeError, EncodeError},
+    traits::{Decodable, Encodable, SignableTransaction},
+    transaction::IntoTransaction,
+};
 
 /// PintTx
 #[derive(Debug, Clone)]
@@ -35,7 +37,7 @@ impl PintTx {
     }
 }
 
-impl primitives::Transaction for PintTx {
+impl crate::traits::Transaction for PintTx {
     fn chain_id(&self) -> ChainId {
         self.chain_id
     }
@@ -66,7 +68,7 @@ impl Encodable for PintTx {
 }
 
 impl Decodable for PintTx {
-    fn decode(data: &Vec<u8>) -> Result<(Self, usize), primitives::error::DecodeError> {
+    fn decode(data: &Vec<u8>) -> Result<(Self, usize), DecodeError> {
         let raw: [u8; 84] = match data[1..85].try_into() {
             Ok(arr) => arr,
             Err(_) => return Err(DecodeError::InputTooShort),

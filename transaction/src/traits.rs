@@ -1,12 +1,11 @@
 //! Transactions primitive traits
-use alloy_primitives::B256;
+use core::fmt;
+use primitives::types::{Address, B256, ChainId, TxHash, U256};
 
 use crate::{
     error::{DecodeError, EncodeError, RecoveryError},
-    signed::{Recovered, Signed, SignerRecovable},
-    types::{Address, ChainId, TxHash, U256},
+    signed::{Recovered, Signed},
 };
-use core::fmt;
 
 // A raw transaction
 pub trait Transaction: fmt::Debug + Send + Sync + 'static {
@@ -24,6 +23,11 @@ pub trait Encodable {
 // A trait for raw string into struct
 pub trait Decodable: Sized {
     fn decode(vec: &Vec<u8>) -> Result<(Self, usize), DecodeError>;
+}
+
+/// A trait for recovering public key from a signature.
+pub trait SignerRecovable {
+    fn recover_signer(&self) -> Result<Address, RecoveryError>;
 }
 
 /// A trait for signed transaction

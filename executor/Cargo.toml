@@ -1,13 +1,12 @@
 [package]
-name = "block"
+name = "executor"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [dependencies]
-hex = "0.4.3"
 primitives.workspace = true
-sha2 = "0.10.9"
+storage.workspace = true
 
 [lints]
 workspace = true

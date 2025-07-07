@@ -62,7 +62,6 @@ pub enum TransactionValidationOutcome<T: PoolTransaction> {
         transaction: T,
         balance: U256,
         nonce: u64,
-        propagate: bool,
     },
     Invalid(T, InvalidPoolTransactionError),
     Error(TxHash, Box<dyn core::error::Error + Send + Sync>),

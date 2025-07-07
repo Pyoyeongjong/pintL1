@@ -1,14 +1,17 @@
 //! Transactions for PintL1
 use k256::{EncodedPoint, ecdsa::VerifyingKey};
 use primitives::{
-    error::{DecodeError, EncodeError, RecoveryError},
-    signed::{Signature, Signed, SignerRecovable},
-    transaction::{Decodable, Encodable, SignableTransaction, SignedTransaction},
+    signature::Signature,
     types::{Address, B256, ChainId, TxHash, U256},
 };
 use sha2::{Digest, Sha256};
 
-use crate::PintTx;
+use crate::{
+    PintTx,
+    error::{DecodeError, EncodeError, RecoveryError},
+    signed::Signed,
+    traits::{Decodable, Encodable, SignableTransaction, SignedTransaction, SignerRecovable},
+};
 
 // Macro definitions must appear before any macro invocations.
 /*
@@ -34,7 +37,7 @@ pub enum Transaction {
     Pint(PintTx),
 }
 
-impl primitives::Transaction for Transaction {
+impl crate::traits::Transaction for Transaction {
     fn chain_id(&self) -> ChainId {
         delegate!(self => tx.chain_id())
     }
@@ -161,7 +164,7 @@ impl Decodable for TxEnvelope {
     }
 }
 
-impl primitives::Transaction for TxEnvelope {
+impl crate::traits::Transaction for TxEnvelope {
     fn chain_id(&self) -> ChainId {
         match self {
             TxEnvelope::Pint(signed_tx) => signed_tx.chain_id(),
@@ -194,7 +197,7 @@ impl SignedTransaction for TxEnvelope {
 }
 
 impl SignerRecovable for TxEnvelope {
-    fn recover_signer(&self) -> Result<Address, primitives::error::RecoveryError> {
+    fn recover_signer(&self) -> Result<Address, RecoveryError> {
         let signature_hash: TxHash = self.signature_hash();
         let signature = self.signature().clone();
 
@@ -224,10 +227,8 @@ impl SignerRecovable for TxEnvelope {
 
 #[cfg(test)]
 mod tests {
-    use k256::ecdsa::{RecoveryId, Signature as ECDSASig, SigningKey};
-    use rand::Rng;
-
     use super::*;
+    use k256::ecdsa::{RecoveryId, Signature as ECDSASig, SigningKey};
 
     fn get_priv_pub_key(seed: &[u8]) -> (SigningKey, Vec<u8>) {
         let private_key_random = Sha256::digest(&seed);

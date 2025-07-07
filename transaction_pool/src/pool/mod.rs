@@ -76,7 +76,6 @@ where
                 transaction,
                 balance,
                 nonce,
-                propagate,
             } => {
                 let sender_id = self.get_sender_id(transaction.sender());
                 let transaction_id: TransactionId = TransactionId::new(sender_id, nonce);

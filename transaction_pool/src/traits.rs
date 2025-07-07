@@ -2,13 +2,13 @@
 use core::default::Default;
 use std::{fmt::Debug, sync::Arc};
 
-use primitives::{
-    Transaction,
+use primitives::types::{Address, TxHash, U256};
+use transaction::{
+    TransactionSigned,
     signed::Recovered,
-    transaction::SignedTransaction,
-    types::{Address, TxHash, U256},
+    traits::{SignedTransaction, Transaction},
+    transaction::TxEnvelope,
 };
-use transaction::{TransactionSigned, transaction::TxEnvelope};
 
 use crate::{error::PoolResult, validate::ValidPoolTransaction};
 
@@ -21,17 +21,8 @@ pub enum TransactionOrigin {
     Private,
 }
 
-/// A traits for transaction whether it can be validated to [Pool](crate::Pool)
-pub trait PoolTransaction: Debug + Transaction {
-    type Pooled: SignedTransaction;
-    fn tx_type(&self) -> u8;
-    fn hash(&self) -> TxHash;
-    fn sender(&self) -> Address;
-    fn cost(&self) -> U256;
-    fn from_pooled(tx: Recovered<Self::Pooled>) -> Self;
-}
-
 /// A traits for TransactionPool
+///
 pub trait TransactionPool {
     type Transaction: PoolTransaction;
 
@@ -49,6 +40,23 @@ pub trait TransactionPool {
     ) -> impl Future<Output = PoolResult<TxHash>> + Send;
 
     fn get(&self, tx_hash: &TxHash) -> Option<Arc<ValidPoolTransaction<Self::Transaction>>>;
+
+    fn best_transactions(
+        &self,
+    ) -> Box<dyn BestTransactions<Item = Arc<ValidPoolTransaction<Self::Transaction>>>>;
+}
+
+/// Transaction Traits that should implement to get into pool
+///
+/// A traits for transaction whether it can be validated to [Pool](crate::Pool)
+pub trait PoolTransaction: Debug + Transaction {
+    type Pooled: SignedTransaction;
+
+    fn tx_type(&self) -> u8;
+    fn hash(&self) -> TxHash;
+    fn sender(&self) -> Address;
+    fn cost(&self) -> U256;
+    fn from_pooled(tx: Recovered<Self::Pooled>) -> Self;
 }
 
 /// The default [`PoolTransaction`] for the [Pool](crate::Pool)
@@ -101,3 +109,6 @@ impl PoolTransaction for PintPooledTransaction {
         Self { transaction: tx }
     }
 }
+
+/// BestTransactions of the Pool's transaction
+pub trait BestTransactions: Iterator + Send {}

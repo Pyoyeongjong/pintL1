@@ -1,7 +1,7 @@
 //! Handle validation of Pint type Transaction
 use std::{marker::PhantomData, sync::Arc};
 
-use storage::state::{StateProvider, StateProviderFactory};
+use storage::traits::{StateProvider, StateProviderFactory};
 use transaction::U256;
 
 use crate::{
@@ -123,11 +123,6 @@ where
             transaction,
             balance: account.balance,
             nonce: account.nonce,
-            propagate: match origin {
-                TransactionOrigin::External => true,
-                TransactionOrigin::Local => true,
-                TransactionOrigin::Private => false,
-            },
         }
     }
 
@@ -197,9 +192,11 @@ impl<Client> PintTransactionValidatorBuilder<Client> {
 #[cfg(test)]
 mod tests {
     use crate::traits::TransactionPool;
-    use primitives::transaction::SignedTransaction;
-    use primitives::{Transaction, transaction::Decodable};
-    use transaction::{U256, transaction::TxEnvelope};
+    use transaction::{
+        U256,
+        traits::{Decodable, SignedTransaction, Transaction},
+        transaction::TxEnvelope,
+    };
 
     use crate::{
         Pool,

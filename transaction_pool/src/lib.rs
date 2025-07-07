@@ -1,9 +1,8 @@
 //! Implementation of the Transaction Pool [Pool]
 //! [Pool] is the top level structure for transaction pool
 //! It manages mempool & validation part.
-use std::{sync::Arc, vec};
-
 use primitives::types::TxHash;
+use std::sync::Arc;
 
 use crate::{
     config::PoolConfig,
@@ -20,7 +19,7 @@ mod identifier;
 mod ordering;
 mod pool;
 mod test_utils;
-mod traits;
+pub mod traits;
 mod validate;
 
 pub struct Pool<V, T: TransactionOrdering> {
@@ -81,5 +80,12 @@ where
 
     fn get(&self, tx_hash: &TxHash) -> Option<Arc<ValidPoolTransaction<Self::Transaction>>> {
         self.inner().get(tx_hash)
+    }
+
+    fn best_transactions(
+        &self,
+    ) -> Box<dyn traits::BestTransactions<Item = Arc<ValidPoolTransaction<Self::Transaction>>>>
+    {
+        todo!()
     }
 }

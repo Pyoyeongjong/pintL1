@@ -6,8 +6,8 @@ license = "MIT"
 [workspace]
 members = [
     "pint", "primitives",
-    "transaction", "block", "transaction_pool"
-, "net", "storage"]
+    "transaction", "payload", "transaction_pool"
+, "net", "storage", "executor"]
 default-members = ["pint"]
 exclude = []
 
@@ -18,12 +18,14 @@ rust.unused_must_use = "deny"
 pint = { path = "pint" }
 transaction = { path = "transaction" }
 primitives = { path = "primitives" }
-block = { path = "block" }
+payload = { path = "payload" }
 transaction_pool = { path = "transaction_pool" }
 net = { path = "net" }
+executor = { path = "executor" }
 storage = { path = "storage" }
 alloy-consensus = { version = "1.0.7", default-features = false }
 tokio = { version = "1.0.7", features = ["full"] }
+tokio-stream = "0.1.17"
 tracing = { version = "0.1.41" }
 lock_api = { version = "0.4.13" }
 parking_lot = { version =  "0.12.4" }

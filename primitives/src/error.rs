@@ -1,5 +1,5 @@
 //! Errors for primitive trait or structs
-use std::{array::TryFromSliceError, error::Error, fmt};
+use std::{error::Error, fmt};
 /// Signature Error
 #[derive(Debug)]
 pub enum SignatureError {
@@ -11,22 +11,6 @@ pub enum SignatureError {
 impl From<hex::FromHexError> for SignatureError {
     fn from(err: hex::FromHexError) -> Self {
         Self::FromHex(err)
-    }
-}
-
-/// Recovery Error
-#[derive(Debug)]
-pub enum RecoveryError {
-    RecIdError,
-    RecKeyError,
-    AddressError(AddressError),
-    HashGetError,
-    RecoveryFromDigestError,
-}
-
-impl From<AddressError> for RecoveryError {
-    fn from(err: AddressError) -> Self {
-        Self::AddressError(err)
     }
 }
 
@@ -51,24 +35,4 @@ impl From<hex::FromHexError> for AddressError {
     fn from(err: hex::FromHexError) -> Self {
         Self::InvalidHex(err)
     }
-}
-
-#[derive(Debug)]
-pub enum DecodeError {
-    InvalidTxType,
-    SignatureLengthError(TryFromSliceError),
-    SignatureDecodeError,
-    InputTooShort,
-    TryFromError(TryFromSliceError),
-    InvalidAddress,
-}
-impl From<TryFromSliceError> for DecodeError {
-    fn from(err: TryFromSliceError) -> Self {
-        Self::TryFromError(err)
-    }
-}
-
-#[derive(Debug)]
-pub enum EncodeError {
-    InvalidSomething,
 }

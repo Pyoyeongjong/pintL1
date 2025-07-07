@@ -43,3 +43,14 @@ impl Address {
         Self(arr)
     }
 }
+
+use alloy_primitives::B64;
+
+#[derive(PartialEq, Eq)]
+pub struct PayloadId(pub B64);
+
+impl PayloadId {
+    pub fn new(id: [u8; 8]) -> Self {
+        Self(B64::from(id))
+    }
+}
