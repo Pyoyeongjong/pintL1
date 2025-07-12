@@ -1,6 +1,6 @@
 //! Traits for Transaction Pool
 use core::default::Default;
-use std::{fmt::Debug, sync::Arc};
+use std::{fmt::Debug, ops::Add, sync::Arc};
 
 use primitives::types::{Address, TxHash, U256};
 use transaction::{
@@ -80,6 +80,10 @@ impl Transaction for PintPooledTransaction {
 
     fn get_priority(&self) -> Option<u128> {
         self.transaction.get_priority()
+    }
+
+    fn to(&self) -> Address {
+        self.transaction.to()
     }
 }
 

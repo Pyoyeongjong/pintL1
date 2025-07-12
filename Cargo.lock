@@ -689,8 +689,12 @@ dependencies = [
 name = "executor"
 version = "0.1.0"
 dependencies = [
+ "hex",
  "primitives",
  "storage",
+ "tokio",
+ "transaction",
+ "transaction_pool",
 ]
 
 [[package]]

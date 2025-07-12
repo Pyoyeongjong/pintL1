@@ -1,6 +1,7 @@
 //! Transactions primitive traits
 use core::fmt;
 use primitives::types::{Address, B256, ChainId, TxHash, U256};
+use std::ops::Add;
 
 use crate::{
     error::{DecodeError, EncodeError, RecoveryError},
@@ -12,6 +13,7 @@ pub trait Transaction: fmt::Debug + Send + Sync + 'static {
     fn chain_id(&self) -> ChainId;
     fn nonce(&self) -> u64;
     fn value(&self) -> U256;
+    fn to(&self) -> Address;
     fn get_priority(&self) -> Option<u128>;
 }
 

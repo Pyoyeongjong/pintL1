@@ -215,6 +215,11 @@ mod tests {
         let data = hex::decode(raw).unwrap();
 
         let (tx, _) = TxEnvelope::decode(&data).unwrap();
+
+        // dbg!(PintPooledTransaction::from_pooled(
+        //     tx.clone().try_into_recovered().unwrap()
+        // ));
+
         PintPooledTransaction::from_pooled(tx.try_into_recovered().unwrap())
     }
 

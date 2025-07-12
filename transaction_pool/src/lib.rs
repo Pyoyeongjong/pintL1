@@ -13,14 +13,14 @@ use crate::{
     validate::{TransactionValidationOutcome, TransactionValidator, ValidPoolTransaction},
 };
 
-mod config;
+pub mod config;
 mod error;
 mod identifier;
-mod ordering;
+pub mod ordering;
 mod pool;
 mod test_utils;
 pub mod traits;
-mod validate;
+pub mod validate;
 
 pub struct Pool<V, T: TransactionOrdering> {
     pool: Arc<PoolInner<V, T>>,

@@ -13,7 +13,9 @@ use primitives::{
     account::Account,
     types::{Address, B256, ChainId, StorageKey, StorageValue, TxHash, U256},
 };
-use storage::traits::{ProviderResult, StateProvider, StateProviderBox, StateProviderFactory};
+use storage::traits::{
+    AccountReader, ProviderResult, StateProvider, StateProviderBox, StateProviderFactory,
+};
 use transaction::transaction::TxEnvelope;
 
 /// Mocking Types
@@ -150,6 +152,10 @@ impl transaction::traits::Transaction for MockTransaction {
     fn value(&self) -> U256 {
         self.get_value()
     }
+
+    fn to(&self) -> Address {
+        self.get_to()
+    }
 }
 
 impl PoolTransaction for MockTransaction {
@@ -189,7 +195,8 @@ impl MockPintProvider {
     }
 }
 
-impl StateProvider for MockPintProvider {
+impl StateProvider for MockPintProvider {}
+impl AccountReader for MockPintProvider {
     fn basic_account(
         &self,
         address: &Address,
@@ -206,10 +213,7 @@ impl StateProviderFactory for MockPintProvider {
         Ok(Box::new(self.clone()))
     }
 
-    fn state_by_block_hash(
-        &self,
-        block: primitives::types::BlockHash,
-    ) -> ProviderResult<StateProviderBox> {
+    fn state_by_block_number(&self, block: u64) -> ProviderResult<StateProviderBox> {
         todo!()
     }
 }

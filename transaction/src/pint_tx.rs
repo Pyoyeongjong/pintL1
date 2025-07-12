@@ -47,6 +47,9 @@ impl crate::traits::Transaction for PintTx {
     fn value(&self) -> U256 {
         self.value
     }
+    fn to(&self) -> Address {
+        self.to.clone()
+    }
 
     fn get_priority(&self) -> Option<u128> {
         Some(self.fee)

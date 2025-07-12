@@ -1,32 +1,57 @@
+pub mod db;
 pub mod error;
 pub mod traits;
 
-use crate::traits::{StateProvider, StateProviderFactory};
+use primitives::account::Account;
+
+use crate::{
+    db::Database,
+    error::ProviderError,
+    traits::{AccountReader, ProviderResult, StateProvider, StateProviderFactory},
+};
 
 /// State which is created by StateProviderFactory
-pub struct PintStateProvider {}
+pub struct PintStateProvider<DB> {
+    db: DB,
+    block_nb: u64,
+}
 
-impl StateProvider for PintStateProvider {
+impl<DB: Database> StateProvider for PintStateProvider<DB> {}
+
+impl<DB: Database> AccountReader for PintStateProvider<DB> {
     fn basic_account(
         &self,
         address: &primitives::types::Address,
-    ) -> Result<Option<primitives::account::Account>, crate::error::ProviderError> {
-        todo!()
+    ) -> Result<Option<Account>, ProviderError> {
+        Ok(self.db.basic(address)?)
     }
 }
 
 /// Factory that makes StateProvider
-pub struct PintStateProviderFactory {}
+#[derive(Clone)]
+pub struct PintStateProviderFactory<DB> {
+    db: DB,
+}
 
-impl StateProviderFactory for PintStateProviderFactory {
-    fn latest(&self) -> crate::traits::ProviderResult<crate::traits::StateProviderBox> {
-        todo!()
+impl<DB> PintStateProviderFactory<DB>
+where
+    DB: Database,
+{
+    pub fn new(db: DB) -> Self {
+        Self { db }
     }
+}
 
-    fn state_by_block_hash(
-        &self,
-        block: primitives::types::BlockHash,
-    ) -> crate::traits::ProviderResult<crate::traits::StateProviderBox> {
+impl<DB> StateProviderFactory for PintStateProviderFactory<DB>
+where
+    DB: Database,
+{
+    // State for latest block
+    fn latest(&self) -> ProviderResult<traits::StateProviderBox> {
+        let block_no = self.db.block_number();
+        self.state_by_block_number(block_no)
+    }
+    fn state_by_block_number(&self, block: u64) -> ProviderResult<traits::StateProviderBox> {
         todo!()
     }
 }

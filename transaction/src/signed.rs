@@ -135,6 +135,10 @@ impl<T: Transaction> Transaction for Signed<T> {
         self.tx.value()
     }
 
+    fn to(&self) -> Address {
+        self.tx.to()
+    }
+
     fn get_priority(&self) -> Option<u128> {
         self.tx.get_priority()
     }

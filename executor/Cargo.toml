@@ -7,6 +7,10 @@ license.workspace = true
 [dependencies]
 primitives.workspace = true
 storage.workspace = true
+transaction.workspace = true
+transaction_pool.workspace = true
+hex.workspace = true
+tokio.workspace = true
 
 [lints]
 workspace = true

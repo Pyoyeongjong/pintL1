@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use executor::database::State;
 use primitives::{
     block::{Block, body::SealedBlock},
     types::{BlockHash, PayloadId, U256},
@@ -67,7 +68,7 @@ where
     }
 }
 
-pub struct PintPayloadBulderAttributes {
+pub struct PintPayloadBuilderAttributes {
     // Id of the payload
     pub id: PayloadId,
     // Parent block to build to payload on top
@@ -82,50 +83,44 @@ pub struct PintBuiltPayload {
     pub fees: U256,
 }
 
-pub fn default_pint_payload<PvmConfig, Client, Pool, F>(
-    args: BuildArguments<PintPayloadBulderAttributes>,
-    client: Client,
-    pool: Pool,
-    best_txs: F,
-) -> Result<BuildOutcome<PintBuiltPayload>, PayloadBuilderError>
-where
-    Pool: TransactionPool,
-    Client: StateProviderFactory,
-{
-    todo!()
-    // let BuildArguments {
-    //     parent_header,
-    //     attributes,
-    // } = args;
-    // let state_provider = client.state_by_block_hash(parent_header.hash())?;
-    // let state = StateProviderDatabase::new(&state_provider);
+// pub fn default_pint_payload<PvmConfig, Client, Pool, F>(
+//     args: BuildArguments<PintPayloadBuilderAttributes>,
+//     client: Client,
+//     pool: Pool,
+//     best_txs: F,
+// ) -> Result<BuildOutcome<PintBuiltPayload>, PayloadBuilderError>
+// where
+//     Pool: TransactionPool,
+//     Client: StateProviderFactory,
+// {
+//     let BuildArguments {
+//         parent_header,
+//         attributes,
+//     } = args;
+//     let state_provider = client.state_by_block_hash(parent_header.hash())?;
+//     let mut db = State::builder().with_database(state_provider).build();
 
-    // let mut db = State::builder().with_database(cached_reads.as_db_mut());
+//     let mut builder = pvm_config.builder_for_next_block();
 
-    // let mut builder = pvm_config.builder_for_next_block();
+//     let mut best_txs = pool.best_transactions();
 
-    // let mut best_txs = pool.best_transactions();
+//     let mut total_fee = U256::ZERO;
 
-    // let mut total_fee = U256::ZERO;
+//     while let Some(pool_tx) = best_txs.next() {
+//         let result = match builder.execute_transaction(pool_tx.clone()) {
+//             Ok(()) => {}
+//             Err(BlockExecutionError::Validation(BlockValidationError::InvalidTx { error })) => {}
+//             Err(err) => return Err(PayloadBuilderError::ExecutionError(err)),
+//         };
 
-    // while let Some(pool_tx) = best_txs.next() {
-    //     let result = match builder.execute_transaction(pool_tx.clone()) {
-    //         Ok(()) => {}
-    //         Err(BlockExecutionError::Validation(BlockValidationError::InvalidTx { error })) => {}
-    //         Err(err) => return Err(PayloadBuilderError::ExecutionError(err)),
-    //     };
+//         let miner_fee = pool_tx.transaction.cost();
+//         total_fee += miner_fee;
+//     }
 
-    //     let miner_fee = pool_tx.transaction.cost();
-    //     total_fee += miner_fee;
-    // }
-
-    // let BlockBuilderOutcome {} = builder.finish(&state_provider)?;
-    // let payload = PintBuiltPayload::new();
-    // Ok(BuildOutcome::Better {
-    //     payload,
-    //     cached_reads,
-    // })
-}
+//     let BlockBuilderOutcome {} = builder.finish(&state_provider)?;
+//     let payload = PintBuiltPayload::new();
+//     Ok(BuildOutcome::Better { payload })
+// }
 
 pub enum BuildOutcome<Payload> {
     Better { payload: Payload },

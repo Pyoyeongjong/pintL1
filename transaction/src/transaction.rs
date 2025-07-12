@@ -48,6 +48,10 @@ impl crate::traits::Transaction for Transaction {
         delegate!(self => tx.value())
     }
 
+    fn to(&self) -> Address {
+        delegate!(self => tx.to())
+    }
+
     fn get_priority(&self) -> Option<u128> {
         delegate!(self => tx.get_priority())
     }
@@ -188,6 +192,12 @@ impl crate::traits::Transaction for TxEnvelope {
             TxEnvelope::Pint(signed_tx) => signed_tx.get_priority(),
         }
     }
+
+    fn to(&self) -> Address {
+        match self {
+            TxEnvelope::Pint(signed_tx) => signed_tx.to(),
+        }
+    }
 }
 
 impl SignedTransaction for TxEnvelope {
@@ -242,17 +252,17 @@ mod tests {
 
     #[test]
     fn test_transaction_encode_and_decode_transaction() {
-        let (signing_key, sender) = get_priv_pub_key("hello".as_bytes());
+        let (signing_key, sender) = get_priv_pub_key("abc".as_bytes());
         let sender = Address::from_byte(sender.try_into().unwrap());
         dbg!(&sender.get_addr_hex());
-        let (_, receiver) = get_priv_pub_key("wow".as_bytes());
+        let (_, receiver) = get_priv_pub_key("efg".as_bytes());
         let receiver = Address::from_byte(receiver.try_into().unwrap());
         dbg!(receiver.get_addr_hex());
         let pint_tx = PintTx {
             chain_id: 0,
             nonce: 0,
             to: receiver,
-            fee: 0,
+            fee: 1,
             value: U256::from(1),
         };
 
