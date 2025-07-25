@@ -4,6 +4,7 @@ use transaction_pool::traits::PoolTransaction;
 
 use crate::traits::ExecutableTx;
 
+/// Struct for executable transaction
 #[derive(Debug)]
 pub struct ExecutableTranasction {
     pub tx_type: u8,

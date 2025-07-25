@@ -86,6 +86,6 @@ where
         &self,
     ) -> Box<dyn traits::BestTransactions<Item = Arc<ValidPoolTransaction<Self::Transaction>>>>
     {
-        todo!()
+        Box::new(self.pool.best_transactions())
     }
 }

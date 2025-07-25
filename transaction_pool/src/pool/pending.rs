@@ -1,9 +1,12 @@
 //! Implementation of [PendingPool] and [PendingPoolTransaction]
+use std::cmp::Ordering;
+use std::collections::BTreeSet;
 use std::{collections::BTreeMap, sync::Arc};
 use tokio::sync::broadcast;
 
-use crate::identifier::TransactionId;
+use crate::identifier::{SenderId, TransactionId};
 use crate::ordering::Priority;
+use crate::pool::best::BestTransactions;
 use crate::{ordering::TransactionOrdering, validate::ValidPoolTransaction};
 #[derive(Clone)]
 pub struct PendingPool<T: TransactionOrdering> {
@@ -13,10 +16,12 @@ pub struct PendingPool<T: TransactionOrdering> {
     submission_id: u64,
     // All Transactions that are currently inside the pool grouped by their
     // identifier.
-    by_id: BTreeMap<TransactionId, PendingPoolTransaction<T>>,
+    by_id: BTreeMap<TransactionId, PendingTransaction<T>>,
+    // Independent transactions that can be included directly and don't require other transactions.
+    independent: BTreeMap<SenderId, PendingTransaction<T>>,
     // Used to broadcast new transactions that have been added to the
     // `PendingPool` to `static_subscriber(files)` of this pool
-    new_transaction_notifier: broadcast::Sender<PendingPoolTransaction<T>>,
+    new_transaction_notifier: broadcast::Sender<PendingTransaction<T>>,
 }
 
 impl<T: TransactionOrdering> PendingPool<T> {
@@ -26,6 +31,7 @@ impl<T: TransactionOrdering> PendingPool<T> {
             ordering,
             submission_id: 0,
             by_id: Default::default(),
+            independent: Default::default(),
             new_transaction_notifier,
         }
     }
@@ -50,7 +56,7 @@ impl<T: TransactionOrdering> PendingPool<T> {
         let submission_id = self.next_id();
         let priority = self.ordering.priority(&tx.transaction);
 
-        let tx = PendingPoolTransaction {
+        let tx = PendingTransaction {
             submission_id,
             transaction: tx,
             priority,
@@ -60,7 +66,8 @@ impl<T: TransactionOrdering> PendingPool<T> {
             let _ = self.new_transaction_notifier.send(tx.clone());
         }
 
-        self.by_id.insert(tx_id, tx);
+        self.by_id.insert(tx_id, tx.clone());
+        self.independent.insert(tx_id.sender, tx);
     }
 
     pub fn remove_transaction(
@@ -77,30 +84,62 @@ impl<T: TransactionOrdering> PendingPool<T> {
         id
     }
 
-    fn get(&self, id: &TransactionId) -> Option<&PendingPoolTransaction<T>> {
+    fn get(&self, id: &TransactionId) -> Option<&PendingTransaction<T>> {
         self.by_id.get(id)
     }
 
     fn contains(&self, id: &TransactionId) -> bool {
         self.by_id.contains_key(id)
     }
+
+    // independent.values().cloned().collect() collects into a collection 'BtreeSet'
+    // using 'Ord" to sort and determine uniqueness.
+    pub fn best(&self) -> BestTransactions<T> {
+        BestTransactions {
+            all: self.by_id.clone(),
+            independent: self.independent.values().cloned().collect(),
+            invalid: Default::default(),
+        }
+    }
 }
 
-// A transaction that is ready to be incloded in a block.
+// A transaction that is ready to be included in a block.
 // pub(crate): is public inside this crate ( can't use this outside! )
 #[derive(Debug)]
-pub(crate) struct PendingPoolTransaction<T: TransactionOrdering> {
+pub(crate) struct PendingTransaction<T: TransactionOrdering> {
     pub(crate) submission_id: u64,
     pub(crate) transaction: Arc<ValidPoolTransaction<T::Transaction>>,
     pub(crate) priority: Priority<T::PriorityValue>,
 }
 
-impl<T: TransactionOrdering> Clone for PendingPoolTransaction<T> {
+impl<T: TransactionOrdering> Clone for PendingTransaction<T> {
     fn clone(&self) -> Self {
         Self {
             submission_id: self.submission_id,
             transaction: Arc::clone(&self.transaction),
             priority: self.priority.clone(),
         }
+    }
+}
+
+impl<T: TransactionOrdering> Ord for PendingTransaction<T> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.priority
+            .cmp(&other.priority)
+            .then_with(|| self.submission_id.cmp(&other.submission_id))
+    }
+}
+
+impl<T: TransactionOrdering> PartialOrd for PendingTransaction<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<T: TransactionOrdering> Eq for PendingTransaction<T> {}
+
+impl<T: TransactionOrdering> PartialEq for PendingTransaction<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == Ordering::Equal
     }
 }

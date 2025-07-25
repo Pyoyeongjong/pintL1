@@ -11,14 +11,14 @@ pub struct ParkedPool<T: TransactionOrdering> {
     submission_id: u64,
     // All Transactions that are currently inside the pool grouped by their
     // identifier.
-    by_id: BTreeMap<TransactionId, ParkedPoolTransaction<T>>,
+    by_id: BTreeMap<TransactionId, ParkedTransaction<T>>,
 }
 
 impl<T: TransactionOrdering> ParkedPool<T> {
     pub fn add_transaction(&mut self, tx: Arc<ValidPoolTransaction<T::Transaction>>) {
         let id = *tx.id();
         let submission_id = self.next_id();
-        let tx = ParkedPoolTransaction {
+        let tx = ParkedTransaction {
             submission_id,
             transaction: tx,
         };
@@ -55,7 +55,7 @@ impl<T: TransactionOrdering> Default for ParkedPool<T> {
 }
 
 /// ParkedPoolTransaction
-struct ParkedPoolTransaction<T: TransactionOrdering> {
+struct ParkedTransaction<T: TransactionOrdering> {
     transaction: Arc<ValidPoolTransaction<T::Transaction>>,
     submission_id: u64,
 }

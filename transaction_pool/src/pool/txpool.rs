@@ -8,6 +8,7 @@ use tracing::trace;
 
 use crate::error::{InsertErr, PoolError, PoolErrorKind, PoolResult};
 use crate::identifier::{SenderId, SenderInfo, TransactionId};
+use crate::pool::best::BestTransactions;
 use crate::pool::parked::ParkedPool;
 use crate::pool::pending::PendingPool;
 use crate::pool::state::{SubPool, TxState};
@@ -40,6 +41,11 @@ impl<T: TransactionOrdering> TxPool<T> {
             all_transactions: AllTransactions::new(&config),
             config,
         }
+    }
+
+    pub fn print_pool_len(&self) {
+        dbg!(self.pending_pool.len());
+        dbg!(self.parked_pool.len());
     }
 
     // This function is called after validation of super struct
@@ -193,6 +199,12 @@ impl<T: TransactionOrdering> TxPool<T> {
         on_chain_nonce: u64,
     ) -> Result<(), PoolError> {
         Ok(())
+    }
+
+    // Returns an iterator that yields transactions that are ready to be included in the block with the track fees
+    pub fn best_transactions(&self) -> BestTransactions<T> {
+        let best = self.pending_pool.best();
+        best
     }
 }
 

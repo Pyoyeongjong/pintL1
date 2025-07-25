@@ -8,11 +8,12 @@ use crate::{
     error::{PoolError, PoolResult},
     identifier::{SenderId, SenderIdentifiers, TransactionId},
     ordering::TransactionOrdering,
-    pool::txpool::TxPool,
+    pool::{best::BestTransactions, txpool::TxPool},
     traits::{PoolTransaction, TransactionOrigin},
     validate::{TransactionValidationOutcome, TransactionValidator, ValidPoolTransaction},
 };
 
+pub mod best;
 pub mod parked;
 pub mod pending;
 pub mod state;
@@ -43,6 +44,10 @@ where
 
     pub fn validator(&self) -> &V {
         &self.validator
+    }
+
+    pub fn pool(&self) -> &RwLock<TxPool<T>> {
+        &self.pool
     }
 
     // Adds all transactions in the iterator to the pool, returning a list of results.
@@ -114,6 +119,10 @@ where
         &self,
     ) -> parking_lot::lock_api::RwLockReadGuard<'_, parking_lot::RawRwLock, TxPool<T>> {
         self.pool.read()
+    }
+
+    pub fn best_transactions(&self) -> BestTransactions<T> {
+        self.get_pool_data().best_transactions()
     }
 }
 

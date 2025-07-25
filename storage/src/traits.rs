@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use primitives::{
     account::Account,
     types::{Address, BlockHash, U256},
@@ -16,6 +18,29 @@ pub trait StateProvider: AccountReader {
         self.basic_account(addr)?
             .map_or_else(|| Ok(None), |acc| Ok(Some(acc.nonce)))
     }
+
+    fn prepare_execute(&self) -> ProviderResult<HashMap<Address, Account>>;
+}
+
+impl Database for StateProviderBox {
+    fn basic(&self, address: &Address) -> Result<Option<Account>, crate::error::DatabaseError> {
+        todo!()
+    }
+
+    fn block_hash(&self, number: u64) -> Result<Option<BlockHash>, crate::error::DatabaseError> {
+        todo!()
+    }
+
+    fn block_number(&self) -> u64 {
+        todo!()
+    }
+
+    fn copy_state_from_block_no(
+        &self,
+        number: u64,
+    ) -> Result<std::collections::HashMap<Address, Account>, crate::error::DatabaseError> {
+        todo!()
+    }
 }
 
 pub trait AccountReader {
@@ -24,9 +49,13 @@ pub trait AccountReader {
 
 pub type StateProviderBox = Box<dyn StateProvider>;
 
-impl StateProvider for StateProviderBox {}
+impl<T: StateProvider + ?Sized> StateProvider for Box<T> {
+    fn prepare_execute(&self) -> ProviderResult<HashMap<Address, Account>> {
+        (**self).prepare_execute()
+    }
+}
 
-impl AccountReader for StateProviderBox {
+impl<T: StateProvider + ?Sized> AccountReader for Box<T> {
     fn basic_account(&self, address: &Address) -> Result<Option<Account>, ProviderError> {
         (**self).basic_account(address)
     }

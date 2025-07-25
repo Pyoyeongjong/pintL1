@@ -1,3 +1,4 @@
-pub enum DatabaseError {}
-
-pub enum BlockExecutionError {}
+#[derive(Debug)]
+pub enum BlockExecutionError {
+    ExecutionError,
+}
