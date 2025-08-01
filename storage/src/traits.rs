@@ -19,7 +19,7 @@ pub trait StateProvider: AccountReader {
             .map_or_else(|| Ok(None), |acc| Ok(Some(acc.nonce)))
     }
 
-    fn prepare_execute(&self) -> ProviderResult<HashMap<Address, Account>>;
+    fn prepare_execute(&mut self) -> ProviderResult<HashMap<Address, Account>>;
 }
 
 impl Database for StateProviderBox {
@@ -50,7 +50,7 @@ pub trait AccountReader {
 pub type StateProviderBox = Box<dyn StateProvider>;
 
 impl<T: StateProvider + ?Sized> StateProvider for Box<T> {
-    fn prepare_execute(&self) -> ProviderResult<HashMap<Address, Account>> {
+    fn prepare_execute(&mut self) -> ProviderResult<HashMap<Address, Account>> {
         (**self).prepare_execute()
     }
 }

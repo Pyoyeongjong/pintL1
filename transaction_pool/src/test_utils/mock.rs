@@ -196,7 +196,7 @@ impl MockPintProvider {
 }
 
 impl StateProvider for MockPintProvider {
-    fn prepare_execute(&self) -> ProviderResult<HashMap<Address, Account>> {
+    fn prepare_execute(&mut self) -> ProviderResult<HashMap<Address, Account>> {
         todo!()
     }
 }

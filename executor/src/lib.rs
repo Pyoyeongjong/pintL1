@@ -3,8 +3,7 @@ pub mod error;
 pub mod traits;
 pub mod transaction;
 
-use primitives::types::TxHash;
-use storage::{db::Database, traits::StateProvider};
+use storage::traits::StateProvider;
 
 use crate::{
     database::State, error::BlockExecutionError, traits::BlockExecutor,
@@ -27,14 +26,19 @@ impl<DB: StateProvider> PintBlockExecutor<DB> {
     }
 }
 
-impl<DB> BlockExecutor for PintBlockExecutor<DB> {
+impl<DB: StateProvider> BlockExecutor for PintBlockExecutor<DB> {
     type Transaction = ExecutableTranasction;
 
     fn execute_transaction(
         &mut self,
         tx: &Self::Transaction,
     ) -> Result<Option<u64>, BlockExecutionError> {
-        todo!()
+        let receipt = match self.state.execute_transaction(tx) {
+            Ok(receipt) => receipt,
+            Err(err) => return Err(err),
+        };
+        self.receipts.push(receipt);
+        Ok(Some(0))
     }
 
     fn execute_and_commit(
@@ -45,9 +49,9 @@ impl<DB> BlockExecutor for PintBlockExecutor<DB> {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Receipt {
-    tx_hash: TxHash,
+    tx_type: u8,
     success: bool,
 }
 
@@ -73,10 +77,7 @@ mod tests {
         validate::pint::{PintTransactionValidator, PintTransactionValidatorBuilder},
     };
 
-    use crate::{
-        database::{State, StateProviderDatabase},
-        traits::ExecutableTx,
-    };
+    use crate::{database::State, traits::ExecutableTx};
 
     use super::*;
 
@@ -125,7 +126,7 @@ mod tests {
             .db
             .set_balance(
                 Address::from_hex("a24a188cdcb3bf5fc6ec498d2657c6066b242028".to_string()).unwrap(),
-                U256::MAX,
+                U256::from(10),
             )
             .unwrap();
 
@@ -133,7 +134,7 @@ mod tests {
             .db
             .set_balance(
                 Address::from_hex("314f3ea92a6fc23d6b66057d3acfba04d6b08b58".to_string()).unwrap(),
-                U256::MAX,
+                U256::from(10),
             )
             .unwrap();
 
@@ -170,5 +171,77 @@ mod tests {
         for tx in txs.iter() {
             let res = executor.execute_transaction(tx);
         }
+
+        let binding = executor.state.transition_state.expect("None");
+
+        let receiver1 = binding
+            .get(
+                &Address::from_hex("e0aa4e80c739ee08b5a6680586d1bf3991840c21".to_string()).unwrap(),
+            )
+            .unwrap();
+        let sender1 = binding
+            .get(
+                &Address::from_hex("a24a188cdcb3bf5fc6ec498d2657c6066b242028".to_string()).unwrap(),
+            )
+            .unwrap();
+        assert!(sender1.balance == U256::from(9));
+        assert!(receiver1.balance == U256::from(1));
+        assert!(sender1.nonce == 1);
+
+        let receiver2 = binding
+            .get(
+                &Address::from_hex("802d9a22dddb7b03ff11eea121bdd4a75135e408".to_string()).unwrap(),
+            )
+            .unwrap();
+        let sender2 = binding
+            .get(
+                &Address::from_hex("314f3ea92a6fc23d6b66057d3acfba04d6b08b58".to_string()).unwrap(),
+            )
+            .unwrap();
+        assert!(sender2.balance == U256::from(9));
+        assert!(receiver2.balance == U256::from(1));
+        assert!(sender2.nonce == 1);
+
+        dbg!(executor.receipts);
+    }
+
+    #[tokio::test]
+    async fn test_add_parked_transaction_and_get_best_transaction() {
+        // make default pool
+        let (pool, _db, mut provider) = make_pool();
+        // modify db (add balance .etc)
+        provider
+            .db
+            .set_balance(
+                Address::from_hex("a24a188cdcb3bf5fc6ec498d2657c6066b242028".to_string()).unwrap(),
+                U256::from(0),
+            )
+            .unwrap();
+        // get the latest state provider
+        // 이건 StateProvider (DB + State Block Number)
+        let state_provider: StateProviderBox = provider.latest().unwrap();
+        // State 실행을 위해서 wrapping (Provider + Transition_State(모의 실행용))
+        let state = State::new(state_provider);
+        // make the executor (State + 영수증 용)
+        let mut executor = PintBlockExecutor {
+            state,
+            receipts: Vec::new(),
+        };
+
+        // add_transaction
+        let tx1 = make_pool_transaction_1();
+        let _res1 = pool.add_external_transaction(tx1).await;
+        assert!(_res1.is_ok());
+        // pool.inner().pool().read().print_pool_len();
+        // get best transactions from the pool
+        let txs: Vec<_> = pool
+            .best_transactions()
+            .map(|tx| {
+                let exec_tx = ExecutableTranasction::from_pool_transaction(tx.transaction.clone());
+                exec_tx
+            })
+            .collect();
+
+        assert!(txs.len() == 0);
     }
 }

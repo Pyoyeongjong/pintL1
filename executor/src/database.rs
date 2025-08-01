@@ -1,11 +1,21 @@
 use core::num;
 use std::collections::HashMap;
 
-use primitives::{account::Account, types::Address};
+use primitives::{
+    account::{self, Account},
+    block::Block,
+    types::Address,
+};
 use storage::{
     db::Database,
     error::{DatabaseError, ProviderError},
     traits::{AccountReader, ProviderResult, StateProvider},
+};
+
+use crate::{
+    Receipt,
+    error::{BlockExecutionError, StateError},
+    transaction::ExecutableTranasction,
 };
 
 pub struct State<DB> {
@@ -21,8 +31,63 @@ impl<DB: StateProvider> State<DB> {
         }
     }
 
-    pub fn prepare_execute(&self) -> ProviderResult<HashMap<Address, Account>> {
-        self.database.prepare_execute()
+    pub fn prepare_execute(&mut self) -> Result<(), StateError> {
+        let res = self.database.prepare_execute();
+        self.transition_state = match res {
+            Ok(state) => Some(state),
+            Err(_) => return Err(StateError::PreareExecutionError),
+        };
+
+        Ok(())
+    }
+
+    pub fn execute_transaction(
+        &mut self,
+        tx: &ExecutableTranasction,
+    ) -> Result<Receipt, BlockExecutionError> {
+        if self.transition_state.is_none() {
+            return Err(BlockExecutionError::StateNotPrepared);
+        }
+
+        let ExecutableTranasction {
+            tx_type,
+            chain_id: _,
+            sender,
+            receiver,
+            nonce: _,
+            value,
+        } = tx;
+
+        let state = self.transition_state.as_mut().unwrap();
+
+        // update receiver's info
+        match state.get_mut(&receiver) {
+            Some(account) => {
+                account.balance += value;
+            }
+            None => {
+                let mut account = Account::default();
+                account.balance += value;
+                state.insert(receiver.clone(), account);
+            }
+        }
+
+        // update sender's info
+        match state.get_mut(&sender) {
+            Some(account) => {
+                account.nonce += 1;
+                account.balance -= value;
+            }
+            None => {
+                // It should never happen!
+                return Err(BlockExecutionError::SenderNotFound);
+            }
+        };
+
+        Ok(Receipt {
+            tx_type: tx_type.clone(),
+            success: true,
+        })
     }
 }
 
@@ -71,7 +136,7 @@ impl<DB: Database> StateProvider for StateProviderDatabase<DB> {
             .map_or_else(|| Ok(None), |acc| Ok(Some(acc.nonce)))
     }
 
-    fn prepare_execute(&self) -> storage::traits::ProviderResult<HashMap<Address, Account>> {
+    fn prepare_execute(&mut self) -> storage::traits::ProviderResult<HashMap<Address, Account>> {
         todo!()
     }
 }

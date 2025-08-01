@@ -1,6 +1,5 @@
 //! Implementation of [PendingPool] and [PendingPoolTransaction]
 use std::cmp::Ordering;
-use std::collections::BTreeSet;
 use std::{collections::BTreeMap, sync::Arc};
 use tokio::sync::broadcast;
 

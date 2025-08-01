@@ -19,7 +19,7 @@ pub struct PintStateProvider<DB> {
 }
 
 impl<DB: Database> StateProvider for PintStateProvider<DB> {
-    fn prepare_execute(&self) -> ProviderResult<HashMap<primitives::types::Address, Account>> {
+    fn prepare_execute(&mut self) -> ProviderResult<HashMap<primitives::types::Address, Account>> {
         let res = match self.db.copy_state_from_block_no(self.block_no) {
             Ok(res) => res,
             Err(e) => return Err(ProviderError::DatabaseError(e)),
