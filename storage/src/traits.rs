@@ -2,7 +2,11 @@ use std::collections::HashMap;
 
 use primitives::{
     account::Account,
-    types::{Address, BlockHash, U256},
+    block::{
+        header::{Header, SealedHeader},
+        traits::BlockHeader,
+    },
+    types::{Address, B256, BlockHash, U256},
 };
 
 use crate::{db::Database, error::ProviderError};
@@ -64,7 +68,20 @@ impl<T: StateProvider + ?Sized> AccountReader for Box<T> {
 pub type ProviderResult<Ok> = Result<Ok, ProviderError>;
 
 /// Factory that makes StateProvider
-pub trait StateProviderFactory {
+pub trait StateProviderFactory: Send + Sync {
     fn latest(&self) -> ProviderResult<StateProviderBox>;
     fn state_by_block_number(&self, block: u64) -> ProviderResult<StateProviderBox>;
+    fn state_by_block_hash(&self, hash: BlockHash) -> ProviderResult<StateProviderBox>;
+}
+
+pub trait BlockReader: HeaderProvider {}
+
+pub trait HeaderProvider {
+    type Header: BlockHeader;
+
+    fn latest_header(&self) -> ProviderResult<Option<SealedHeader<Self::Header>>>;
+    fn sealed_header_by_hash(
+        &self,
+        bloch_hash: BlockHash,
+    ) -> ProviderResult<Option<SealedHeader<Self::Header>>>;
 }

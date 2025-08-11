@@ -11,7 +11,7 @@ use parking_lot::Mutex;
 use paste::paste;
 use primitives::{
     account::Account,
-    types::{Address, B256, ChainId, StorageKey, StorageValue, TxHash, U256},
+    types::{Address, B256, BlockHash, ChainId, StorageKey, StorageValue, TxHash, U256},
 };
 use storage::traits::{
     AccountReader, ProviderResult, StateProvider, StateProviderBox, StateProviderFactory,
@@ -218,6 +218,10 @@ impl StateProviderFactory for MockPintProvider {
     }
 
     fn state_by_block_number(&self, block: u64) -> ProviderResult<StateProviderBox> {
+        todo!()
+    }
+
+    fn state_by_block_hash(&self, header: BlockHash) -> ProviderResult<StateProviderBox> {
         todo!()
     }
 }

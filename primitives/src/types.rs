@@ -1,7 +1,7 @@
 //! primitive types for blockchain
 
 use crate::error::AddressError;
-pub use alloy_primitives::{B256, U256};
+pub use alloy_primitives::{B64, B256, U256};
 use rand::Rng;
 
 pub type TxHash = B256;
@@ -44,9 +44,7 @@ impl Address {
     }
 }
 
-use alloy_primitives::B64;
-
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub struct PayloadId(pub B64);
 
 impl PayloadId {

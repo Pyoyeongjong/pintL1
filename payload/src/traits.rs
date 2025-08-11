@@ -1,9 +1,11 @@
 //! Traits to implements!
-//! 
-use crate::error::PayloadBuilderError;
+//!
+use primitives::types::{BlockHash, PayloadId};
 
-pub trait PayloadJob {
-    type PayloadAttributes;
+use crate::{BuildOutcome, PintBuiltPayload, builder::BuildArguments, error::PayloadBuilderError};
+
+pub trait PayloadJob: Send + Sync {
+    type PayloadAttributes: PayloadBuilderAttributes;
 }
 
 pub trait PayloadJobGenerator {
@@ -17,10 +19,21 @@ pub trait PayloadJobGenerator {
 
 pub trait PayloadTypes {
     type BuiltPayload;
-    type PayloadBuilderAttributes;
+    type PayloadBuilderAttributes: PayloadBuilderAttributes + Clone;
 }
 
-pub trait PayloadBuilder {
+pub trait PayloadBuilderAttributes {
+    fn payload_id(&self) -> PayloadId;
+    // Returns the hash or the parent block this payload builds on
+    fn parent(&self) -> BlockHash;
+    fn timestamp(&self) -> u64;
+}
+
+pub trait PayloadBuilder: Send + Sync + Clone {
     type BuiltPayload;
-    fn try_build(&self) -> Result<Self::BuiltPayload, PayloadBuilderError>;
+    type Attributes: PayloadBuilderAttributes;
+    fn try_build(
+        &self,
+        args: BuildArguments<Self::Attributes>,
+    ) -> Result<BuildOutcome<PintBuiltPayload>, PayloadBuilderError>;
 }

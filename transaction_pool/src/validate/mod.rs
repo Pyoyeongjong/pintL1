@@ -1,6 +1,7 @@
 //! Implement Validation part.
 //! Only validated transactions can be inserted into the [TxPool](crate::pool::txpool)
 pub mod pint;
+pub mod task;
 
 use primitives::types::TxHash;
 use transaction::U256;
@@ -41,6 +42,10 @@ impl<T: PoolTransaction> ValidPoolTransaction<T> {
     // True when other is underpriced
     pub fn is_underpriced(&self, other: &Self) -> bool {
         self.transaction.cost() > other.transaction.cost()
+    }
+
+    pub fn cost(&self) -> U256 {
+        self.transaction.cost()
     }
 }
 

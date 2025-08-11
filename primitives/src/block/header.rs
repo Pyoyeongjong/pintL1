@@ -27,6 +27,7 @@ impl crate::block::traits::BlockHeader for Header {}
 
 // TODO: Implement SealedHeader
 // Runtime Memory Cache Structure for block header with block hash
+#[derive(Clone)]
 pub struct SealedHeader<H = Header> {
     hash: OnceLock<BlockHash>,
     header: H,

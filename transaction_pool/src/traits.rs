@@ -23,7 +23,7 @@ pub enum TransactionOrigin {
 
 /// A traits for TransactionPool
 ///
-pub trait TransactionPool {
+pub trait TransactionPool: Clone + Send + Sync {
     type Transaction: PoolTransaction;
 
     fn add_external_transaction(

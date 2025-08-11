@@ -26,6 +26,14 @@ pub struct Pool<V, T: TransactionOrdering> {
     pool: Arc<PoolInner<V, T>>,
 }
 
+impl<V, T: TransactionOrdering> Clone for Pool<V, T> {
+    fn clone(&self) -> Self {
+        Self {
+            pool: Arc::clone(&self.pool),
+        }
+    }
+}
+
 impl<V, T> Pool<V, T>
 where
     V: TransactionValidator,

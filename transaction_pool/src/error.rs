@@ -40,3 +40,8 @@ pub enum InvalidPoolTransactionError {
     NotEnoughFee,
     NonceNotConsistent,
 }
+
+#[derive(Debug)]
+pub enum TransactionValidatoneError {
+    ValidationServiceUnreachable,
+}

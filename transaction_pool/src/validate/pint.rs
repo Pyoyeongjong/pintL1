@@ -11,6 +11,7 @@ use crate::{
 };
 
 /// Pint Transaction Validator
+#[derive(Clone)]
 pub struct PintTransactionValidator<Client, Tx> {
     inner: Arc<PintTransactionValidatorInner<Client, Tx>>,
 }

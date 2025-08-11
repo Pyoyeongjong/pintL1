@@ -1,4 +1,4 @@
-use crate::block::header::SealedHeader;
+use crate::block::{header::SealedHeader, traits::Block};
 
 #[derive(Debug)]
 pub struct BlockBody<T> {
@@ -6,7 +6,9 @@ pub struct BlockBody<T> {
 }
 
 impl<T> crate::block::traits::BlockBody for BlockBody<T> {}
-pub struct SealedBlock<B: crate::block::traits::Block> {
+
+#[derive(Clone)]
+pub struct SealedBlock<B: Block> {
     header: SealedHeader<B::Header>,
     body: B::Body,
 }

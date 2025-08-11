@@ -4,7 +4,7 @@ pub mod traits;
 
 use std::collections::HashMap;
 
-use primitives::account::Account;
+use primitives::{account::Account, types::BlockHash};
 
 use crate::{
     db::Database,
@@ -54,7 +54,7 @@ where
 
 impl<DB> StateProviderFactory for PintStateProviderFactory<DB>
 where
-    DB: Database + Clone + 'static,
+    DB: Database + Clone + 'static + Send + Sync,
 {
     // State for latest block
     fn latest(&self) -> ProviderResult<traits::StateProviderBox> {
@@ -66,5 +66,9 @@ where
             db: self.db.clone(),
             block_no,
         }))
+    }
+
+    fn state_by_block_hash(&self, header: BlockHash) -> ProviderResult<traits::StateProviderBox> {
+        todo!()
     }
 }

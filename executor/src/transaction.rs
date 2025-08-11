@@ -1,10 +1,12 @@
+use std::sync::Arc;
+
 use primitives::types::Address;
-use transaction::{ChainId, U256, traits::Transaction};
-use transaction_pool::traits::PoolTransaction;
+use transaction::{ChainId, TransactionSigned, U256, signed::Recovered, traits::Transaction};
+use transaction_pool::{traits::PoolTransaction, validate::ValidPoolTransaction};
 
 use crate::traits::ExecutableTx;
 
-/// Struct for executable transaction
+/// Struct for executable transaction. It
 #[derive(Debug)]
 pub struct ExecutableTranasction {
     pub tx_type: u8,
@@ -46,6 +48,39 @@ impl ExecutableTx for ExecutableTranasction {
             receiver: tx.to(),
             nonce: tx.nonce(),
             value: tx.value(),
+        }
+    }
+}
+
+impl From<Recovered<TransactionSigned>> for ExecutableTranasction {
+    fn from(recovered: Recovered<TransactionSigned>) -> Self {
+        let Recovered {
+            signer: address,
+            inner: tx,
+        } = recovered;
+        ExecutableTranasction {
+            tx_type: tx.tx_type(),
+            chain_id: tx.chain_id(),
+            sender: address,
+            receiver: tx.to(),
+            nonce: tx.nonce(),
+            value: tx.value(),
+        }
+    }
+}
+
+impl<T> From<Arc<ValidPoolTransaction<T>>> for ExecutableTranasction
+where
+    T: PoolTransaction,
+{
+    fn from(tx: Arc<ValidPoolTransaction<T>>) -> Self {
+        ExecutableTranasction {
+            tx_type: tx.transaction.tx_type(),
+            chain_id: tx.transaction.chain_id(),
+            sender: tx.transaction.sender(),
+            receiver: tx.transaction.to(),
+            nonce: tx.transaction.nonce(),
+            value: tx.transaction.value(),
         }
     }
 }

@@ -5,6 +5,10 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+transaction_pool.workspace = true
+executor.workspace = true
+payload.workspace = true
+storage.workspace = true
 
 [lints]
 workspace = true

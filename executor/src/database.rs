@@ -1,15 +1,12 @@
-use core::num;
+//! In-Memory Database for Executor!
+//!
 use std::collections::HashMap;
 
-use primitives::{
-    account::{self, Account},
-    block::Block,
-    types::Address,
-};
+use primitives::{account::Account, types::Address};
 use storage::{
     db::Database,
     error::{DatabaseError, ProviderError},
-    traits::{AccountReader, ProviderResult, StateProvider},
+    traits::{AccountReader, StateProvider},
 };
 
 use crate::{
@@ -18,6 +15,7 @@ use crate::{
     transaction::ExecutableTranasction,
 };
 
+/// In Memory State that represent that block-number
 pub struct State<DB> {
     pub database: DB,
     pub transition_state: Option<HashMap<Address, Account>>,
@@ -91,6 +89,7 @@ impl<DB: StateProvider> State<DB> {
     }
 }
 
+/// StateProvider
 #[derive(Default)]
 pub struct StateProviderDatabase<DB>(pub DB);
 

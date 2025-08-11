@@ -3,6 +3,7 @@ pub mod error;
 pub mod traits;
 pub mod transaction;
 
+use primitives::block::{body::SealedBlock, traits::Block};
 use storage::traits::StateProvider;
 
 use crate::{
@@ -10,7 +11,7 @@ use crate::{
     transaction::ExecutableTranasction,
 };
 
-/// Transaction executor
+/// Transaction executor Pint Main Executor
 pub struct PintBlockExecutor<DB> {
     pub state: State<DB>,
     pub receipts: Vec<Receipt>,
@@ -47,8 +48,19 @@ impl<DB: StateProvider> BlockExecutor for PintBlockExecutor<DB> {
     ) -> Result<Option<u64>, BlockExecutionError> {
         todo!()
     }
+
+    fn finish<B: Block>(&self) -> Result<BlockBuilderOutcome<B>, BlockExecutionError> {
+        todo!()
+    }
 }
 
+/// In this project, executor can be builder, so we deal with this in the executor struct
+pub struct BlockBuilderOutcome<B: Block> {
+    pub receipts: Vec<Receipt>,
+    pub block: SealedBlock<B>,
+}
+
+/// Transaction Execution Result for BlockExecutor
 #[derive(Default, Debug)]
 pub struct Receipt {
     tx_type: u8,

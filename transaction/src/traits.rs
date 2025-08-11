@@ -1,7 +1,6 @@
 //! Transactions primitive traits
 use core::fmt;
 use primitives::types::{Address, B256, ChainId, TxHash, U256};
-use std::ops::Add;
 
 use crate::{
     error::{DecodeError, EncodeError, RecoveryError},

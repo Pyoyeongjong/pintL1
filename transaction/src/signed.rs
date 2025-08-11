@@ -12,6 +12,7 @@ use primitives::{
 };
 
 use crate::{
+    TransactionSigned,
     error::{DecodeError, RecoveryError},
     traits::{Decodable, Encodable, SignableTransaction, SignerRecovable, Transaction},
 };
@@ -19,8 +20,8 @@ use crate::{
 // Signed object with recovered signer
 #[derive(Debug, Clone)]
 pub struct Recovered<T> {
-    signer: Address,
-    inner: T,
+    pub signer: Address,
+    pub inner: T,
 }
 
 impl<T> Recovered<T> {
