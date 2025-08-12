@@ -119,3 +119,24 @@ impl Database for InMemoryDB {
         Ok(state)
     }
 }
+
+impl Database for Arc<InMemoryDB> {
+    fn basic(&self, address: &Address) -> Result<Option<Account>, DatabaseError> {
+        (**self).basic(address)
+    }
+
+    fn block_hash(&self, number: u64) -> Result<Option<BlockHash>, DatabaseError> {
+        (**self).block_hash(number)
+    }
+
+    fn block_number(&self) -> u64 {
+        (**self).block_number()
+    }
+
+    fn copy_state_from_block_no(
+        &self,
+        number: u64,
+    ) -> Result<HashMap<Address, Account>, DatabaseError> {
+        (**self).copy_state_from_block_no(number)
+    }
+}

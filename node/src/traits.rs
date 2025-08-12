@@ -1,3 +1,5 @@
+use storage::traits::StateProviderFactory;
+
 use crate::{builder::ComponentsBuilder, components::FullNodeTypes};
 
 pub trait Node<N: FullNodeTypes> {

@@ -1,3 +1,9 @@
-use crate::components::FullNodeTypes;
+use payload::builder::BuildArguments;
 
-pub trait ConsensusBuilder<Node: FullNodeTypes> {}
+use crate::{components::FullNodeTypes, error::BuildError};
+
+pub trait ConsensusBuilder<Node: FullNodeTypes> {
+    type Consensus;
+
+    fn build_consensus(self) -> impl Future<Output = Result<Self::Consensus, BuildError>>;
+}

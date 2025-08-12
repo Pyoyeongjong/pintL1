@@ -568,6 +568,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b05b61dc5112cbb17e4b6cd61790d9845d13888356391624cbe7e41efeac1e75"
 
 [[package]]
+name = "consensus"
+version = "0.1.0"
+
+[[package]]
 name = "const-hex"
 version = "1.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1174,7 +1178,9 @@ version = "0.1.0"
 name = "node"
 version = "0.1.0"
 dependencies = [
+ "consensus",
  "executor",
+ "net",
  "payload",
  "storage",
  "transaction_pool",
@@ -1357,6 +1363,8 @@ dependencies = [
  "lock_api",
  "node",
  "rand 0.9.1",
+ "storage",
+ "tokio",
  "tokio-stream",
  "tracing",
 ]

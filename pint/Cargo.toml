@@ -12,8 +12,10 @@ alloy-primitives = "1.2.0"
 lock_api = "0.4.13"
 rand = "0.9.1"
 node.workspace = true
+storage.workspace = true
 tokio-stream = "0.1.17"
 tracing = "0.1.41"
 clap = { version = "4.5.42", features = ["derive"] }
 eyre = "0.6.12"
+tokio.workspace = true
 

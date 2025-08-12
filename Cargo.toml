@@ -7,7 +7,7 @@ license = "MIT"
 members = [
     "pint", "primitives",
     "transaction", "payload", "transaction_pool"
-, "net", "storage", "executor"]
+, "net", "storage", "executor", "consensus",]
 default-members = ["pint"]
 exclude = []
 
@@ -21,6 +21,7 @@ primitives = { path = "primitives" }
 payload = { path = "payload" }
 transaction_pool = { path = "transaction_pool" }
 net = { path = "net" }
+consensus = { path = "consensus" }
 node = { path = "node" }
 executor = { path = "executor" }
 storage = { path = "storage" }

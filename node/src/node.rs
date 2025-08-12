@@ -1,16 +1,19 @@
+use std::{alloc::handle_alloc_error, marker::PhantomData, sync::Arc};
+
+use consensus::PintConsensus;
+use executor::PintBlockExecutor;
+use net::PintNetworkHandle;
+use payload::{builder::PayloadBuilderHandle, traits::PayloadTypes, PintPayloadTypes};
+use storage::{db::{Database, InMemoryDB}, PintStateProviderFactory};
 use transaction_pool::{
-    Pool,
-    ordering::PintOrdering,
-    traits::{PintPooledTransaction, TransactionPool},
-    validate::{pint::PintTransactionValidator, task::TransactionValidationTaskExecutor},
+    config::PoolConfig, ordering::PintOrdering, traits::{PintPooledTransaction, TransactionPool}, validate::{pint::{PintTransactionValidator, PintTransactionValidatorBuilder}, task::TransactionValidationTaskExecutor}, Pool
 };
 
 use crate::{
     builder::ComponentsBuilder,
     components::{
-        FullNodeTypes, consensus::ConsensusBuilder, execute::ExecutorBuilder,
-        network::NetworkBuilder, payload::PayloadServiceBuilder, pool::PoolBuilder,
-    },
+        consensus::ConsensusBuilder, execute::ExecutorBuilder, network::NetworkBuilder, payload::PayloadServiceBuilder, pool::PoolBuilder, FullNodeTypes
+    }, error::BuildError,
 };
 
 #[derive(Default)]
@@ -28,7 +31,7 @@ impl PintNode {
     where
         Node: FullNodeTypes,
     {
-        ComponentsBuilder::new(
+        ComponentsBuilder::new::<Node>(
             PintPoolBuilder::default(),
             PintPayloadServiceBuilder::default(),
             PintNetworkBuilder::default(),
@@ -36,6 +39,12 @@ impl PintNode {
             PintConsensusBuilder::default(),
         )
     }
+}
+
+
+impl FullNodeTypes for PintNode {
+    type Provider = PintStateProviderFactory<Arc<InMemoryDB>>;
+    type Payload = PintPayloadTypes;
 }
 
 #[derive(Default)]
@@ -52,10 +61,14 @@ where
         PintOrdering<PintPooledTransaction>,
     >;
 
-    async fn build_pool(self) -> Self::Pool {
-        let validator = TransactionValidationTaskExecutor::new(PintTransactionValidator::defalut());
+    async fn build_pool(self, provider: Node::Provider) -> Result<Self::Pool, BuildError> {
 
-        let transaction_pool = Pool::new(validator, ordering, config);
+        let validator = PintTransactionValidatorBuilder::new(provider).build();
+
+        let validator_task_executor = TransactionValidationTaskExecutor::new(validator);
+        let transaction_pool = Pool::new(validator_task_executor, PintOrdering::default(), PoolConfig::default());
+        
+        Ok(transaction_pool)
     }
 }
 
@@ -67,6 +80,9 @@ where
     Node: FullNodeTypes,
     Pool: TransactionPool,
 {
+    async fn spawn_payload_builder_service(self, pool: Pool, provider: Node::Provider) -> Result<PayloadBuilderHandle<<Node as FullNodeTypes>::Payload>, BuildError> {
+        todo!()
+    }
 }
 
 #[derive(Default)]
@@ -77,14 +93,40 @@ where
     Node: FullNodeTypes,
     Pool: TransactionPool,
 {
+    type Network = PintNetworkHandle;
+    
+    async fn build_network(self, pool: Pool) -> Result<Self::Network, BuildError> {
+        todo!()
+    }
 }
 
 #[derive(Default)]
 pub struct PintExecutorBuilder;
 
-impl<Node> ExecutorBuilder<Node> for PintExecutorBuilder where Node: FullNodeTypes {}
+impl<Node> ExecutorBuilder<Node> for PintExecutorBuilder where Node: FullNodeTypes {
+    type Exec = PintBlockExecutor<InMemoryDB>;
+    
+    async fn build_exec(self) -> Result<Self::Exec, BuildError> {
+        todo!()
+    }
+}
 
 #[derive(Default)]
 pub struct PintConsensusBuilder;
 
-impl<Node> ConsensusBuilder<Node> for PintConsensusBuilder where Node: FullNodeTypes {}
+impl<Node> ConsensusBuilder<Node> for PintConsensusBuilder where Node: FullNodeTypes {
+    type Consensus = PintConsensus;
+    
+    async fn build_consensus(self) -> Result<Self::Consensus, BuildError> {
+        todo!()
+    }
+}
+
+
+pub struct Components<Node: FullNodeTypes, Network, Pool, Exec, Consensus> {
+    pub transaction_pool: Pool,
+    pub executor: Exec,
+    pub consensus: Consensus,
+    pub network: Network,
+    pub payload_builder: PayloadBuilderHandle<Node::Payload>
+}

@@ -9,6 +9,8 @@ transaction_pool.workspace = true
 executor.workspace = true
 payload.workspace = true
 storage.workspace = true
+net.workspace = true
+consensus.workspace = true
 
 [lints]
 workspace = true

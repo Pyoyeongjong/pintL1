@@ -13,6 +13,12 @@ pub struct TransactionValidationTaskExecutor<V> {
     pub validator: V,
 }
 
+impl<V: TransactionValidator> TransactionValidationTaskExecutor<V> {
+    pub fn new(validator: V) -> Self {
+        Self { validator }
+    }
+}
+
 impl<V> TransactionValidator for TransactionValidationTaskExecutor<V>
 where
     V: TransactionValidator + Clone,

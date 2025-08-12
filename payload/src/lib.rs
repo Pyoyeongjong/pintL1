@@ -23,7 +23,7 @@ use transaction_pool::traits::{PoolTransaction, TransactionPool};
 use crate::{
     builder::BuildArguments,
     error::PayloadBuilderError,
-    traits::{PayloadBuilder, PayloadBuilderAttributes, PayloadJob, PayloadJobGenerator},
+    traits::{PayloadBuilder, PayloadBuilderAttributes, PayloadJob, PayloadJobGenerator, PayloadTypes},
 };
 
 pub mod builder;
@@ -242,4 +242,12 @@ where
 
     let payload = PintBuiltPayload::new(attributes.id, sealed_block, total_fee);
     Ok(BuildOutcome::Better { payload })
+}
+
+
+pub struct PintPayloadTypes;
+
+impl PayloadTypes for PintPayloadTypes {
+    type BuiltPayload = PintBuiltPayload;
+    type PayloadBuilderAttributes = PintPayloadBuilderAttributes;
 }
